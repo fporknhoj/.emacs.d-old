@@ -1,0 +1,18 @@
+;; -*- mode: emacs-lisp; coding: emacs-mule; -*-
+;; --------------------------------------------------------------------------
+;; Desktop File for Emacs
+;; --------------------------------------------------------------------------
+;; Created Tue Oct  7 11:23:01 2014
+;; Desktop file format version 206
+;; Emacs version 24.3.1
+
+;; Global section:
+(setq desktop-missing-file-warning nil)
+(setq tags-file-name nil)
+(setq tags-table-list nil)
+(setq search-ring '("load-theme" "theme " "SegmentStatus" "R" "DATETIME" "date.start.dw" "DSRDATE" "DSRDate" "wombat" "order" "aggregate"))
+(setq regexp-search-ring nil)
+(setq register-alist '((114 . "%.%")))
+(setq file-name-history '("c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v2/unyson_3.r" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v2/" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/unyson_2nd_round.r" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/unyson.r" "c:/Users/John.Kropf/Documents/Projects/Network Opportunity Sequencing Model/" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Documents/Projects/Network Opportunity Sequencing Model/" "c:/Users/John.Kropf/Documents/Projects/Comp Catalog Unyson Update/" "c:/Users/John.Kropf/Documents/Projects/Network Opportunity Sequencing Model/" "c:/Users/John.Kropf/Documents/Projects/unyson/" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/" "c:/Users/John.Kropf/Desktop/unyson/" "c:/Users/John.Kropf/Desktop/unyson/unyson.r" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/screenres.ps1" "c:/Users/John.Kropf/Desktop/htmldoc.html" "c:/Users/John.Kropf/Documents/Projects/Relative Cost Position/drayman1.sql" "c:/Users/John.Kropf/Documents/Projects/Text Files/" "c:/" "c:/DW2.r" "c:/Users/John.Kropf/Desktop/Chicago Outbound.xlsx" "c:/Users/John.Kropf/Documents/Projects/Constrained Margin Threshold/Final 2/notes.txt" "c:/Users/John.Kropf/Documents/Projects/Constrained Margin Threshold/Final 2/costQueryChange.sql" "c:/Users/John.Kropf/Documents/Projects/Constrained Margin Threshold/Final 2/amargin.r" "c:/Users/John.Kropf/Documents/Projects/Constrained Margin Threshold/Final/" "~/.emacs.d/init.el"))
+
+;; Buffer section -- buffers listed in same order as in buffer list:
