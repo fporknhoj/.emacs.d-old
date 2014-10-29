@@ -3,10 +3,21 @@
 
 (setq mc/cmds-to-run-for-all
       '(
-	keyboard-escape-quit
-	))
+        delete-indentation
+        ess-smart-comma
+        ess-yank
+        handle-switch-frame
+        keyboard-escape-quit
+        kill-region
+        previous-buffer
+        ))
 
 (setq mc/cmds-to-run-once
       '(
-	ess-smart-S-assign
-	))
+        ess-smart-S-assign
+        indent-for-tab-command
+        next-buffer
+        overwrite-mode
+        python-indent-electric-colon
+        python-shell-send-buffer
+        ))

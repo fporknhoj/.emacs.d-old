@@ -2,7 +2,7 @@
 ;; --------------------------------------------------------------------------
 ;; Desktop File for Emacs
 ;; --------------------------------------------------------------------------
-;; Created Tue Oct  7 11:23:01 2014
+;; Created Tue Oct 28 09:19:20 2014
 ;; Desktop file format version 206
 ;; Emacs version 24.3.1
 
@@ -10,9 +10,64 @@
 (setq desktop-missing-file-warning nil)
 (setq tags-file-name nil)
 (setq tags-table-list nil)
-(setq search-ring '("load-theme" "theme " "SegmentStatus" "R" "DATETIME" "date.start.dw" "DSRDATE" "DSRDate" "wombat" "order" "aggregate"))
+(setq search-ring '("jsond" "final" "match" "font" "frame" "powerline"))
 (setq regexp-search-ring nil)
-(setq register-alist '((114 . "%.%")))
-(setq file-name-history '("c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v2/unyson_3.r" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v2/" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/unyson_2nd_round.r" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/unyson.r" "c:/Users/John.Kropf/Documents/Projects/Network Opportunity Sequencing Model/" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Documents/Projects/Network Opportunity Sequencing Model/" "c:/Users/John.Kropf/Documents/Projects/Comp Catalog Unyson Update/" "c:/Users/John.Kropf/Documents/Projects/Network Opportunity Sequencing Model/" "c:/Users/John.Kropf/Documents/Projects/unyson/" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/" "c:/Users/John.Kropf/Desktop/unyson/" "c:/Users/John.Kropf/Desktop/unyson/unyson.r" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/screenres.ps1" "c:/Users/John.Kropf/Desktop/htmldoc.html" "c:/Users/John.Kropf/Documents/Projects/Relative Cost Position/drayman1.sql" "c:/Users/John.Kropf/Documents/Projects/Text Files/" "c:/" "c:/DW2.r" "c:/Users/John.Kropf/Desktop/Chicago Outbound.xlsx" "c:/Users/John.Kropf/Documents/Projects/Constrained Margin Threshold/Final 2/notes.txt" "c:/Users/John.Kropf/Documents/Projects/Constrained Margin Threshold/Final 2/costQueryChange.sql" "c:/Users/John.Kropf/Documents/Projects/Constrained Margin Threshold/Final 2/amargin.r" "c:/Users/John.Kropf/Documents/Projects/Constrained Margin Threshold/Final/" "~/.emacs.d/init.el"))
+(setq register-alist nil)
+(setq file-name-history '("c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v3/1/temp.r" "c:/Users/John.Kropf/Documents/Projects/Text Files/" "c:/Users/John.Kropf/Documents/Projects/Text Files/topojsoninstall.txt" "c:/Users/John.Kropf/Documents/Projects/Text Files/json.txt" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v3/1/" "c:/Users/John.Kropf/Documents/Projects/" "c:/Users/John.Kropf/Documents/Projects/Rezoning/" "c:/Users/John.Kropf/Documents/Projects/Network Opportunity Sequencing Model/seqf2.r" "c:/Users/John.Kropf/Documents/Projects/Rezoning/" "c:/Users/John.Kropf/Documents/Projects/Rezoning/mine.r" "c:/Users/John.Kropf/Documents/Projects/Relative Cost Position/rcp" "c:/Users/John.Kropf/Desktop/a.py" "c:/Users/John.Kropf/Desktop/tpsclient.py" "c:/Users/John.Kropf/Documents/Projects/" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/a.r" "c:/Users/John.Kropf/Desktop/a.pl" "c:/Users/John.Kropf/Desktop/reorg.py" "c:/Users/John.Kropf/Documents/My Data Sources/" "c:/Users/John.Kropf/" "c:/Users/John.Kropf/AppData/Roaming" "c:/Users/John.Kropf/Documents/Projects/" "c:/Users/John.Kropf/Documents/Projects/Text Files/a.py" "c:/Users/John.Kropf/Desktop/this.py" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/this.py"))
 
 ;; Buffer section -- buffers listed in same order as in buffer list:
+(desktop-create-buffer 206
+  "c:/Users/John.Kropf/Documents/Projects/Rezoning/1/topojson-master/README.md"
+  "README.md"
+  'fundamental-mode
+  nil
+  1
+  '(nil nil)
+  nil
+  nil
+  '((buffer-file-coding-system . undecided-unix)))
+
+(desktop-create-buffer 206
+  "c:/Users/John.Kropf/Desktop/path.txt"
+  "path.txt"
+  'text-mode
+  nil
+  66
+  '(1 nil)
+  nil
+  nil
+  '((buffer-file-coding-system . iso-latin-1-dos)))
+
+(desktop-create-buffer 206
+  "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v3/1/unyson_3.5.1.r"
+  "unyson_3.5.1.r"
+  'ess-mode
+  '(eldoc-mode)
+  14737
+  '(6664 nil)
+  nil
+  nil
+  '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
+
+(desktop-create-buffer 206
+  nil
+  "1"
+  'dired-mode
+  nil
+  779
+  '(nil nil)
+  t
+  '("c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v3/1/")
+  nil)
+
+(desktop-create-buffer 206
+  nil
+  "Projects"
+  'dired-mode
+  nil
+  1518
+  '(353 nil)
+  t
+  '("c:/Users/John.Kropf/Documents/Projects/")
+  nil)
+
