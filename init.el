@@ -1,10 +1,12 @@
+;(set-default-font "InputMono Light 8")
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(blink-cursor-mode nil)
- '(custom-safe-themes (quote ("6cf0e8d082a890e94e4423fc9e222beefdbacee6210602524b7c84d207a5dfb5" "7ed4054a1312e46f96022831bbe031cf1a8597a2acba36af39d60fa9d14bec6b" "7f14fad67d7ac8d0555bd5a1fd1a429ce2dd37162c4e2dc7ae501f54bad1273a" "12dd37432bb454355047c967db886769a6c60e638839405dad603176e2da366b" "90b5269aefee2c5f4029a6a039fb53803725af6f5c96036dee5dc029ff4dff60" "1989847d22966b1403bab8c674354b4a2adf6e03e0ffebe097a6bd8a32be1e19" "9bcb8ee9ea34ec21272bb6a2044016902ad18646bd09fdd65abae1264d258d89" "3c9d994e18db86ae397d077b6324bfdc445ecc7dc81bb9d528cd9bba08c1dac1" "c7359bd375132044fe993562dfa736ae79efc620f68bab36bd686430c980df1c" "7d4d00a2c2a4bba551fcab9bfd9186abe5bfa986080947c2b99ef0b4081cb2a6" "33c5a452a4095f7e4f6746b66f322ef6da0e770b76c0ed98a438e76c497040bb" "e26780280b5248eb9b2d02a237d9941956fc94972443b0f7aeec12b5c15db9f3" "0ebe0307942b6e159ab794f90a074935a18c3c688b526a2035d14db1214cf69c" "bf648fd77561aae6722f3d53965a9eb29b08658ed045207fe32ffed90433eb52" "53c542b560d232436e14619d058f81434d6bbcdc42e00a4db53d2667d841702e" "ce79400f46bd76bebeba655465f9eadf60c477bd671cbcd091fe871d58002a88" "a774c5551bc56d7a9c362dca4d73a374582caedb110c201a09b410c0ebbb5e70" "38c4fb6c8b2625f6307f3dde763d5c61d774d854ecee9c5eb9c5433350bc0bef" "1e7e097ec8cb1f8c3a912d7e1e0331caeed49fef6cff220be63bd2a6ba4cc365" "fc5fcb6f1f1c1bc01305694c59a1a861b008c534cae8d0e48e4d5e81ad718bc6" default)))
+ '(custom-safe-themes (quote ("923faef2c7ed017e63f517703c846c6190c31400261e8abdb1be06d5b46ea19a" "73e09ba6f23a9b3aeedb3ee8589da74182b644c169daa62c4454eac73eea610a" "6cf0e8d082a890e94e4423fc9e222beefdbacee6210602524b7c84d207a5dfb5" "7ed4054a1312e46f96022831bbe031cf1a8597a2acba36af39d60fa9d14bec6b" "7f14fad67d7ac8d0555bd5a1fd1a429ce2dd37162c4e2dc7ae501f54bad1273a" "12dd37432bb454355047c967db886769a6c60e638839405dad603176e2da366b" "90b5269aefee2c5f4029a6a039fb53803725af6f5c96036dee5dc029ff4dff60" "1989847d22966b1403bab8c674354b4a2adf6e03e0ffebe097a6bd8a32be1e19" "9bcb8ee9ea34ec21272bb6a2044016902ad18646bd09fdd65abae1264d258d89" "3c9d994e18db86ae397d077b6324bfdc445ecc7dc81bb9d528cd9bba08c1dac1" "c7359bd375132044fe993562dfa736ae79efc620f68bab36bd686430c980df1c" "7d4d00a2c2a4bba551fcab9bfd9186abe5bfa986080947c2b99ef0b4081cb2a6" "33c5a452a4095f7e4f6746b66f322ef6da0e770b76c0ed98a438e76c497040bb" "e26780280b5248eb9b2d02a237d9941956fc94972443b0f7aeec12b5c15db9f3" "0ebe0307942b6e159ab794f90a074935a18c3c688b526a2035d14db1214cf69c" "bf648fd77561aae6722f3d53965a9eb29b08658ed045207fe32ffed90433eb52" "53c542b560d232436e14619d058f81434d6bbcdc42e00a4db53d2667d841702e" "ce79400f46bd76bebeba655465f9eadf60c477bd671cbcd091fe871d58002a88" "a774c5551bc56d7a9c362dca4d73a374582caedb110c201a09b410c0ebbb5e70" "38c4fb6c8b2625f6307f3dde763d5c61d774d854ecee9c5eb9c5433350bc0bef" "1e7e097ec8cb1f8c3a912d7e1e0331caeed49fef6cff220be63bd2a6ba4cc365" "fc5fcb6f1f1c1bc01305694c59a1a861b008c534cae8d0e48e4d5e81ad718bc6" default)))
  '(python-indent-offset 2)
  '(save-place t nil (saveplace))
  '(sql-connection-alist (quote (("PROS" (sql-product (quote ms)) (sql-user "") (sql-server "HUBDWPROD20") (sql-database "PROS")))))
@@ -29,34 +31,67 @@
 ;;Make able to overwrite selection
 (delete-selection-mode 1)
 
-;;server-start
-;(server-start)
+(setq-default line-spacing 5)
 
 ;;ELPA
-
 ;(add-to-list 'package-archives '("melpa" , "http://melpa.milkbox.net/packages/"))
+
+
+
+
+
 
 ;;Random
 ;http://stackoverflow.com/questions/21880950/what-combination-of-python-mode-ipython-ipython-el-versions-releases-and-ini
 (windmove-default-keybindings 'shift)
 
+
+
+
+
+
 ;;Set CxCb to full screen buffer menu
 (global-set-key "\C-x\C-b" 'buffer-menu)
 
+
+
+
+
+
 ;;Remap esc to quit rather than meta 
 ;(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+
+
+
+
+
 
 ;; Cursor Color
 ;(set-cursor-color "green")
 ;(add-to-list 'default-frame-alist '(cursor-color . "palegoldenrod"))
 
+
+
+
+
+
 ;;No Splash
 (setq inhibit-splash-screen t)
+
+
+
+
+
 
 ;;Toggle Truncate Lines off
 (setq-default truncate-lines t)
  ;(setq-default global-visual-line-mode t)
  ;(setq longlines-mode t)
+
+
+
+
+
 
 ;;Turn on desktop save mode
 ;(desktop-save-mode 1)
@@ -67,13 +102,28 @@
 (convert-standard-filename (format ".emacs.desktop.lock-%d" (emacs-pid))))
 (setq desktop-dirname user-emacs-directory)
 
+
+
+
+
+
 ;;Stop progressively faster mouse scrolling
 (setq mouse-wheel-progressive-speed nil)
+
+
+
+
+
 
 ;;Ess & iPython
 (add-to-list 'load-path "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages\\ess\\lisp")
 (setq ess-use-auto-complete t)
 (load "ess-site")
+
+
+
+
+
 
 ;; trying ipython tab completion: that works :)
 (setq
@@ -86,8 +136,36 @@
   python-shell-completion-string-code "';'.join(get_ipython().Completer.all_completions('''%s'''))\n"
      )
 
+;(setq py-python-command-args '("-pylab" "-colors" "Linux"));
+
+
+
+
+
+
+
+;;Sepia for Perl
+
+;; (add-to-list 'load-path "c:/users/john.kropf/appdata/roaming/.emacs.d/installed_packages/pde/lisp/")
+;; (load "pde-load")
+
+(add-to-list 'load-path "c:/users/john.kropf/appdata/roaming/.emacs.d/installed_packages/sepia")
+(setq sepia-perl5lib (list (expand-file-name "c:/users/john.kropf/appdata/roaming/.emacs.d/installed_packages/sepia/lib")))
+(defalias 'perl-mode 'sepia-mode)
+(require 'sepia)
+
+
+
+
+
+
 ;(setq ipython-command "C:\\Python\\wp2\\python-2.7.6\\Scripts\\ipython.exe")
 ;(require 'ipython)
+
+
+
+
+
 
 ;;Multiple Cursors
 (add-to-list 'load-path "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages\\multiple-cursors")
@@ -98,9 +176,31 @@
 (global-set-key (kbd "C-c C-,") 'mc/mark-all-like-this)
 (global-set-key (kbd "C-.") 'mc/mark-more-like-this-extended) 
 
+
+
+
+
+;;Auto-complete 
+(add-to-list 'load-path "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages\\\\auto-complete")
+(require 'auto-complete)
+(require 'auto-complete-config)
+(global-auto-complete-mode t)
+
+
+
+
+
+
+
+
 ;;Powerline
 (add-to-list 'load-path "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages")
 (require 'powerline)
+
+
+
+
+
 
 ;;SQL Indent
 (add-to-list 'load-path "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages")
@@ -109,8 +209,18 @@
 (require 'tsql-indent)
 (require 'plsql)
 
+
+
+
+
+
 ;; SQL setup
 (setq sql-ms-program "osql")
+
+
+
+
+
 
 ;;Aspell
 (add-to-list 'exec-path "c:\\Program Files\\Aspell\\bin\\")
@@ -120,8 +230,18 @@
 (global-set-key (kbd "<f8>") 'flyspell-mode)
 (global-set-key (kbd "C-<f8>") 'ispell-word)
 
+
+
+
+
+
 ;;Comment Region 
-(global-set-key (kbd "C-c C-c") 'comment-region)
+(global-set-key (kbd "C-c C-c C-c") 'comment-region)
+
+
+
+
+
 
 ;; autopair perens
 ;(electric-pair-mode 1)
@@ -131,6 +251,11 @@
 ;(setq show-paren-delay 25)
  (show-paren-mode 0)
 
+
+
+
+
+
 ;;move backup file storage to temporary directory in the OS 
 ; from http://emacsredux.com/blog/2013/05/09/keep-backup-and-auto-save-files-out-of-the-way/
 (setq backup-directory-alist
@@ -138,8 +263,18 @@
 (setq auto-save-file-name-transforms
       `((".*" ,temporary-file-directory t)))
 
+
+
+
+
+
 ;; new files open in new window
 ;(setq pop-up-frames t)
+
+
+
+
+
 
 ;;font 
 ;(set-face-attribute 'default t :font  "Nitti Light WM2")
@@ -152,16 +287,15 @@
 ;(set-default-font "Anonymous Pro Minus 10")
 ;(set-default-font "Prestige Becker 11")
 
+ 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "ProggyCleanTT CE" :foundry "outline" :slant normal :weight normal :height 120 :width normal))))
- '(mode-line ((t (:foreground "#333333" :background "#ffbbee" :box nil)))))
-; '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil)))))
-
-
+ '(default ((t (:family "QuickType Mono" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+ '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height .999 :family "Calibri"))))
+ '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil)))))
 
 
 
@@ -170,7 +304,8 @@
 
 ;;Set Color Theme
 (add-to-list 'custom-theme-load-path "~/.emacs.d/themes")
-(load-theme 'charcoal-black t)(load-theme 'dark-font-lock t);(load-theme 'tango);(load-theme 'phoenix-dark-pink t);(load-theme 'spacegray t);(load-theme 'dichromacy t);(load-theme 'firebelly t);(load-theme 'tango t);(load-theme 'zenburn t);(load-theme 'brin t);(load-theme 'dichromacy t);(load-theme 'solarized-dark t);(load-theme 'mccarthy t);(load-theme 'ir-black t) ;(load-theme 'solarized-light t)  ;(load-theme 'wombat t) ;(load-theme 'adwaita t) ;(load-theme 'solarized-dark t)
+(load-theme 'heroku t);(load-theme 'retro-orange t);(load-theme 'phoenix-dark-pink t);(load-theme 'adwaita t);(load-theme 'tango t);(load-theme 'charcoal-black t);(load-theme 'tango);(load-theme 'phoenix-dark-pink t);(load-theme 'spacegray t);(load-theme 'dichromacy t);(load-theme 'firebelly t);(load-theme 'tango t);(load-theme 'zenburn t);(load-theme 'brin t);(load-theme 'dichromacy t);(load-theme 'solarized-dark t);(load-theme 'mccarthy t);(load-theme 'ir-black t) ;(load-theme 'solarized-light t)  ;(load-theme 'wombat t) ;(load-theme 'adwaita t) ;(load-theme 'solarized-dark t)
+;(load-theme 'dark-font-lock t)
 
 ;key bindings
 (global-set-key  [f7] 'search-all-buffers)
@@ -179,6 +314,9 @@
 (global-set-key  [f9] 'execute-extended-command)
 (global-set-key [f12] 'keyboard-escape-quit)
 (global-set-key "\C-x\C-z" 'repeat-complex-command)
+
+(defun w32-browser (doc) (w32-shell-execute 1 doc))
+(eval-after-load "dired" '(define-key dired-mode-map [f3] (lambda () (interactive) (w32-browser (dired-replace-in-string "/" "\\" (dired-get-filename))))))
 
 ;;Indents
 (setq-default indent-tabs-mode nil)
@@ -231,14 +369,25 @@ This command does the inverse of `fill-region'."
     (fill-region start end)))
 
 ;; Comment/Uncomment Line
-(defun my-comment-line ()
-  "comment or uncomment current line"
-  (interactive)
-  (comment-or-uncomment-region (line-beginning-position) (line-end-position)))
-(put 'downcase-region 'disabled nil)
-(put 'upcase-region 'disabled nil)
+;;(defun my-comment-line ()
+;;  "comment or uncomment current line"
+;;  (interactive)
+;;  (comment-or-uncomment-region (line-beginning-position) (line-end-position)))
+;;(put 'downcase-region 'disabled nil)
+;;(put 'upcase-region 'disabled nil)
+;;
+;;(global-set-key (kbd "C-c C-d") 'my-comment-line)
 
-(global-set-key (kbd "C-c c") 'my-comment-line)
+(defun comment-or-uncomment-region-or-line ()
+    "Comments or uncomments the region or the current line if there's no active region."
+    (interactive)
+    (let (beg end)
+        (if (region-active-p)
+            (setq beg (region-beginning) end (region-end))
+            (setq beg (line-beginning-position) end (line-end-position)))
+        (comment-or-uncomment-region beg end)))
+
+(global-set-key (kbd "C-c d") 'comment-or-uncomment-region-or-line)
 
 ;; Fix fucking sql queries that are all on one line 
 (defun fix-sql-format (start end)
