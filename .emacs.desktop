@@ -2,7 +2,7 @@
 ;; --------------------------------------------------------------------------
 ;; Desktop File for Emacs
 ;; --------------------------------------------------------------------------
-;; Created Tue Nov 25 11:29:28 2014
+;; Created Mon Jan  5 13:56:03 2015
 ;; Desktop file format version 206
 ;; Emacs version 24.3.1
 
@@ -13,63 +13,52 @@
 (setq search-ring '("cambria" "mode-line" "faces" "theme" "face" "usa" "theme" "python" "new" "desk" "leafl" "python" "jsond" "final" "match" "font"))
 (setq regexp-search-ring nil)
 (setq register-alist nil)
-(setq file-name-history '("~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/economistsavingsglut.txt" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/Rezoning.txt" "c:/Users/John.Kropf/Desktop/" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/emptymiles.r" "~/.emacs.d/init.el" "~/" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/emptymiles.rf" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Documents/Projects/Lane by Lane Price Visualization/2014 07 30/refresh/ramp-analysis-percentage.r" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/sdlkj.r" "t:/price/market based pricing/rezoning/" "c:/Users/John.Kropf/Desktop/scripts/rez.r" "t:/PRICE/Market Based Pricing/Rezoning/R/" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Documents/Projects/Text Files/shinyapp.r" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/users/John.Kropf/Desktop/2014 Accomplishments.txt " "c:/Users/John.Kropf/Documents/Projects/Network Opportunity Sequencing Model/" "t:/PRICE/Market Based Pricing/Rezoning/" "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v3/1/" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el"))
+(setq file-name-history '("c:/Users/John.Kropf/Desktop/rezoning/" "c:/Users/John.Kropf/Desktop/rezoning/start.r" "c:/Users/John.Kropf/Desktop/disc_of_analytical_detail.txt" "c:/Users/John.Kropf/Desktop/delimiters.txt" "c:/Users/John.Kropf/Desktop/partscost" "c:/Users/John.Kropf/Desktop/dif" "c:/Users/John.Kropf/Desktop/missingcity.txt" "c:/Users/John.Kropf/Desktop/ramps.sql" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/economistsavingsglut.txt" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/Rezoning.txt" "c:/Users/John.Kropf/Desktop/" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/emptymiles.r" "~/.emacs.d/init.el" "~/" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/emptymiles.rf" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Documents/Projects/Lane by Lane Price Visualization/2014 07 30/refresh/ramp-analysis-percentage.r" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/sdlkj.r" "t:/price/market based pricing/rezoning/" "c:/Users/John.Kropf/Desktop/scripts/rez.r" "t:/PRICE/Market Based Pricing/Rezoning/R/"))
 
 ;; Buffer section -- buffers listed in same order as in buffer list:
+(desktop-create-buffer 206
+  "c:/Users/John.Kropf/Desktop/rezoning/start.r"
+  "start.r"
+  'ess-mode
+  '(eldoc-mode auto-complete-mode)
+  11819
+  '(12169 nil)
+  nil
+  nil
+  '((indent-tabs-mode) (buffer-file-coding-system . iso-latin-1-dos) (overwrite-mode)))
+
 (desktop-create-buffer 206
   "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el"
   "init.el"
   'emacs-lisp-mode
   '(auto-complete-mode)
-  8125
-  '(8233 nil)
+  10059
+  '(9488 nil)
   nil
   nil
   '((buffer-file-coding-system . undecided-dos)))
-
-(desktop-create-buffer 206
-  "c:/Users/John.Kropf/Desktop/emptymiles.r"
-  "emptymiles.r"
-  'ess-mode
-  '(eldoc-mode auto-complete-mode)
-  125
-  '(72 nil)
-  nil
-  nil
-  '((indent-tabs-mode) (buffer-file-coding-system . iso-latin-1-dos)))
-
-(desktop-create-buffer 206
-  "c:/Users/John.Kropf/Desktop/Rezoning.txt"
-  "Rezoning.txt"
-  'text-mode
-  nil
-  1202
-  '(1011 nil)
-  nil
-  nil
-  '((buffer-file-coding-system . iso-latin-1-dos)))
 
 (desktop-create-buffer 206
   "c:/Users/John.Kropf/Desktop/economistsavingsglut.txt"
   "economistsavingsglut.txt"
   'text-mode
   '(longlines-mode)
-  1
+  1303
   '(562 nil)
   nil
   nil
   '((buffer-file-coding-system . utf-16-dos)))
 
 (desktop-create-buffer 206
-  "c:/Users/John.Kropf/Desktop/sdlkj.r"
-  "sdlkj.r"
+  "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v3/1/unyson_3.5.1.r"
+  "unyson_3.5.1.r"
   'ess-mode
   '(eldoc-mode auto-complete-mode)
-  56
-  '(1737 nil)
+  11136
+  '(6664 nil)
   nil
   nil
-  '((indent-tabs-mode) (buffer-file-coding-system . iso-latin-1-dos) (overwrite-mode)))
+  '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
 
 (desktop-create-buffer 206
   nil
@@ -94,28 +83,6 @@
   '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
 
 (desktop-create-buffer 206
-  "c:/Users/John.Kropf/Desktop/New folder/leafletmap.r"
-  "leafletmap.r"
-  'ess-mode
-  '(eldoc-mode auto-complete-mode)
-  1480
-  '(1942 nil)
-  nil
-  nil
-  '((indent-tabs-mode) (buffer-file-coding-system . iso-latin-1-dos)))
-
-(desktop-create-buffer 206
-  "c:/Users/John.Kropf/Desktop/New folder/chloropleth.r"
-  "chloropleth.r"
-  'ess-mode
-  '(eldoc-mode auto-complete-mode)
-  5440
-  '(6076 nil)
-  nil
-  nil
-  '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
-
-(desktop-create-buffer 206
   "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v3/1/sheet.py"
   "sheet.py"
   'python-mode
@@ -125,17 +92,6 @@
   nil
   nil
   '((tab-width . 2) (indent-tabs-mode) (buffer-file-coding-system . undecided-dos) (overwrite-mode)))
-
-(desktop-create-buffer 206
-  "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v3/1/unyson_3.5.1.r"
-  "unyson_3.5.1.r"
-  'ess-mode
-  '(eldoc-mode auto-complete-mode)
-  14463
-  '(6664 nil)
-  nil
-  nil
-  '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
 
 (desktop-create-buffer 206
   nil

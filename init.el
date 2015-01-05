@@ -287,15 +287,48 @@
 ;(set-default-font "Anonymous Pro Minus 10")
 ;(set-default-font "Prestige Becker 11")
 
- 
+;; (custom-set-faces
+;;  ;; custom-set-faces was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(default ((t (:family "Segoe UI Mono" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.99 :family "Calibri"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.99 :family "Calibri")))))
+
+;; (custom-set-faces
+;;  ;; custom-set-faces was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(default ((t (:family "ProggyTinyTT" :foundry "outline" :slant normal :weight normal :height 120 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.65 :family "Calibri"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.65 :family "Calibri")))))
+
+;; (custom-set-faces
+;;  ;; custom-set-faces was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(default ((t (:family "QuickType Mono" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.0 :family "Calibri"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.0 :family "Calibri")))))
+
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "QuickType Mono" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
- '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height .999 :family "Calibri"))))
- '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil)))))
+ '(default ((t (:family "Consolas" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+ '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.95 :family "Calibri"))))
+ '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.95 :family "Calibri")))))
+
+
+
+
+
+
+
 
 
 
