@@ -1,5 +1,7 @@
 ;(set-default-font "InputMono Light 8")
 
+(setq my-package-directory "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages")
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -116,13 +118,40 @@
 
 
 ;;Ess & iPython
-(add-to-list 'load-path "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages\\ess\\lisp")
+(add-to-list 'load-path (concat my-package-directory "/ess/lisp"));"C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages\\ess\\lisp")
 (setq ess-use-auto-complete t)
 (load "ess-site")
 
 
 
 
+
+
+;;; trying to use python-mode instead of deafult to fix fucking ipython color scheme but it wont work
+;; (add-to-list 'load-path (concat my-package-directory "/python-mode"))
+;; (require 'python-mode)
+
+;; ; use IPython
+;; (setq-default py-shell-name "ipython")
+;; (setq-default py-which-bufname "iPython")
+;; ; use the wx backend, for both mayavi and matplotlib
+;; (setq py-python-command-args
+;;   '("--gui=wx" "--pylab=wx" "-colors" "grayscale-dark"))
+;; (setq py-force-py-shell-name-p t)
+
+; switch to the interpreter after executing code
+;; (setq py-shell-switch-buffers-on-execute-p t)
+;; (setq py-switch-buffers-on-execute-p t)
+; don't split windows
+;; (setq py-split-windows-on-execute-p nil)
+; try to automagically figure out indentation
+;; (setq py-smart-indentation t)
+
+
+;; (setq-default py-shell-name "ipython")
+;; (setq-default py-which-buffname "iPython")
+;; (setq py-python-command-args '("-pylab" "-colors" "grayscale-dark"))
+;; (setq py-force-py-shell-name-p t)
 
 
 ;; trying ipython tab completion: that works :)
@@ -132,11 +161,8 @@
  python-shell-prompt-regexp "In \\[[0-9]+\\]: "
  python-shell-prompt-output-regexp "Out\\[[0-9]+\\]: "
  python-shell-completion-setup-code "from IPython.core.completerlib import module_completion"
-  python-shell-completion-module-string-code "';'.join(module_completion('''%s'''))\n"
-  python-shell-completion-string-code "';'.join(get_ipython().Completer.all_completions('''%s'''))\n"
-     )
-
-;(setq py-python-command-args '("-pylab" "-colors" "Linux"));
+ python-shell-completion-module-string-code "';'.join(module_completion('''%s'''))\n"
+ python-shell-completion-string-code "';'.join(get_ipython().Completer.all_completions('''%s'''))\n")
 
 
 
@@ -149,7 +175,7 @@
 ;; (add-to-list 'load-path "c:/users/john.kropf/appdata/roaming/.emacs.d/installed_packages/pde/lisp/")
 ;; (load "pde-load")
 
-(add-to-list 'load-path "c:/users/john.kropf/appdata/roaming/.emacs.d/installed_packages/sepia")
+(add-to-list 'load-path (concat my-package-directory "/sepia"))
 (setq sepia-perl5lib (list (expand-file-name "c:/users/john.kropf/appdata/roaming/.emacs.d/installed_packages/sepia/lib")))
 (defalias 'perl-mode 'sepia-mode)
 (require 'sepia)
@@ -168,7 +194,7 @@
 
 
 ;;Multiple Cursors
-(add-to-list 'load-path "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages\\multiple-cursors")
+(add-to-list 'load-path (concat my-package-directory "/multiple-cursors"))
 (require 'multiple-cursors)
 (global-set-key (kbd "C-S-c C-S-c") 'mc/mark-next-word-like-this)
 (global-set-key (kbd "C-,") 'mc/mark-next-like-this)
@@ -181,7 +207,7 @@
 
 
 ;;Auto-complete 
-(add-to-list 'load-path "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages\\\\auto-complete")
+(add-to-list 'load-path (concat my-package-directory "/auto-complete"))
 (require 'auto-complete)
 (require 'auto-complete-config)
 (global-auto-complete-mode t)
@@ -194,7 +220,7 @@
 
 
 ;;Powerline
-(add-to-list 'load-path "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages")
+(add-to-list 'load-path my-package-directory)
 (require 'powerline)
 
 
@@ -203,7 +229,7 @@
 
 
 ;;SQL Indent
-(add-to-list 'load-path "C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages")
+(add-to-list 'load-path my-package-directory)
 (require 'sql-indent)
 (require 'sql-transform)
 (require 'tsql-indent)
