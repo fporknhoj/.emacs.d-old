@@ -340,14 +340,50 @@
 ;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.0 :family "Calibri"))))
 ;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.0 :family "Calibri")))))
 
+;; (custom-set-faces
+;;  ;; custom-set-faces was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(default ((t (:family "ProFontWindows" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.95 :family "Calibri"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.95 :family "Calibri")))))
+
+;; (custom-set-faces
+;;  ;; custom-set-faces was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(default ((t (:family "Consolas" :foundry "outline" :slant normal :weight normal :height 80 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.05 :family "Calibri"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.05 :family "Calibri")))))
+
+;; (custom-set-faces
+;;  ;; custom-set-faces was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(default ((t (:family "ProggySmallTT" :foundry "outline" :slant normal :weight normal :height 120 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.77 :family "Cambria"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.77 :family "Cambria")))))
+
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "Consolas" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
- '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.95 :family "Calibri"))))
- '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.95 :family "Calibri")))))
+ '(default ((t (:family "quicktype mono" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+ '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Cambria"))))
+ '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1  :family "Cambria")))))
+
+;; (custom-set-faces
+;;  ;; custom-set-faces was added by Custom.
+;;  ;; If you edit it by hand, you could mess it up, so be careful.
+;;  ;; Your init file should contain only one such instance.
+;;  ;; If there is more than one, they won't work right.
+;;  '(default ((t (:family "Courier Prime" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.955 :family "Calibri"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.95 :family "Calibri")))))
 
 
 
