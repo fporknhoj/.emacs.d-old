@@ -2,105 +2,205 @@
 ;; --------------------------------------------------------------------------
 ;; Desktop File for Emacs
 ;; --------------------------------------------------------------------------
-;; Created Tue Jan  6 13:35:13 2015
+;; Created Sat Jul 11 12:37:26 2015
 ;; Desktop file format version 206
-;; Emacs version 24.3.1
+;; Emacs version 25.0.50.1
 
 ;; Global section:
+(setq desktop-saved-frameset [frameset 1 (21921 21590 847937 0) (desktop . "206") "John.Kropf@L-PC01XKEZ" nil nil ((((font-backend uniscribe gdi) (font . "-outline-Nitti PX Medium-normal-normal-normal-mono-13-*-*-*-c-*-iso8859-1") (border-width . 2) (internal-border-width . 0) (right-divider-width . 0) (bottom-divider-width . 0) (vertical-scroll-bars) (horizontal-scroll-bars) (foreground-color . "#555") (background-color . "#f6f7f8") (mouse-color . "black") (border-color . "black") (screen-gamma) (line-spacing) (left-fringe . 8) (right-fringe . 8) (alpha) (menu-bar-lines . 0) (tool-bar-lines . 0) (height . 45) (title) (fullscreen) (icon-type) (auto-raise) (auto-lower) (cursor-type . box) (scroll-bar-width . 0) (scroll-bar-height . 0) (display-type . color) (background-mode . light) (cursor-color . "#0e1f5b") (frameset--id . "F9F9-8CC6-8447-B8B5") (frameset--mini t) (width . 91) (modeline . t) (minibuffer . t) (unsplittable) (icon-name) (visibility . icon) (display . "w32") (explicit-name) (tool-bar-position . top)) ((min-height . 8) (min-width . 10) (min-height-ignore . 4) (min-width-ignore . 4) (min-height-safe . 2) (min-width-safe . 2) (min-pixel-height . 128) (min-pixel-width . 80) (min-pixel-height-ignore . 64) (min-pixel-width-ignore . 32) (min-pixel-height-safe . 32) (min-pixel-width-safe . 16)) vc (pixel-width . 746) (pixel-height . 711) (total-width . 93) (total-height . 44) (normal-height . 1.0) (normal-width . 1.0) (combination-limit) (leaf (pixel-width . 746) (pixel-height . 567) (total-width . 93) (total-height . 35) (normal-height . 0.7973154362416107) (normal-width . 1.0) (buffer "7_Rebuild Final Table.sas" (selected) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 58) (start . 1))) (leaf (last . t) (pixel-width . 746) (pixel-height . 144) (total-width . 93) (total-height . 9) (normal-height . 0.20268456375838922) (normal-width . 1.0) (buffer "*Occur*" (selected) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 966) (start . 710)))) (((font-backend uniscribe gdi) (font . "-outline-Nitti PX Medium-normal-normal-normal-mono-13-*-*-*-c-*-iso8859-1") (border-width . 2) (internal-border-width . 0) (right-divider-width . 0) (bottom-divider-width . 0) (vertical-scroll-bars) (horizontal-scroll-bars) (foreground-color . "#555") (background-color . "#f6f7f8") (mouse-color . "black") (border-color . "black") (screen-gamma) (line-spacing) (left-fringe . 8) (right-fringe . 8) (alpha) (menu-bar-lines . 0) (tool-bar-lines . 0) (height . 78) (title) (fullscreen) (icon-type) (auto-raise) (auto-lower) (cursor-type . box) (scroll-bar-width . 0) (scroll-bar-height . 0) (display-type . color) (background-mode . light) (cursor-color . "#0e1f5b") (frameset--id . "6885-F3EB-D2C6-1FEE") (frameset--mini t) (width . 133) (modeline . t) (minibuffer . t) (unsplittable) (icon-name) (visibility . icon) (display . "w32") (explicit-name) (tool-bar-position . top)) ((min-height . 4) (min-width . 10) (min-height-ignore . 2) (min-width-ignore . 4) (min-height-safe . 1) (min-width-safe . 2) (min-pixel-height . 64) (min-pixel-width . 80) (min-pixel-height-ignore . 32) (min-pixel-width-ignore . 32) (min-pixel-height-safe . 16) (min-pixel-width-safe . 16)) leaf (pixel-width . 1080) (pixel-height . 1232) (total-width . 135) (total-height . 77) (normal-height . 1.0) (normal-width . 1.0) (buffer "4_deliveries.sas" (selected) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 4370) (start . 3606))) (((font-backend uniscribe gdi) (font . "-outline-Nitti PX Medium-normal-normal-normal-mono-13-*-*-*-c-*-iso8859-1") (border-width . 2) (internal-border-width . 0) (right-divider-width . 0) (bottom-divider-width . 0) (vertical-scroll-bars) (horizontal-scroll-bars) (foreground-color . "#555") (background-color . "#f6f7f8") (mouse-color . "black") (border-color . "black") (screen-gamma) (line-spacing) (left-fringe . 8) (right-fringe . 8) (alpha) (menu-bar-lines . 0) (tool-bar-lines . 0) (height . 35) (title) (fullscreen) (icon-type) (auto-raise) (auto-lower) (cursor-type . box) (scroll-bar-width . 0) (scroll-bar-height . 0) (display-type . color) (background-mode . light) (cursor-color . "#0e1f5b") (visibility) (frameset--id . "8E9C-9818-0DE0-3D97") (frameset--mini t) (modeline . t) (minibuffer . t) (unsplittable) (icon-name) (display . "w32") (explicit-name) (tool-bar-position . top) (width . 80) (left . 304) (top . 115)) ((min-height . 4) (min-width . 10) (min-height-ignore . 2) (min-width-ignore . 4) (min-height-safe . 1) (min-width-safe . 2) (min-pixel-height . 64) (min-pixel-width . 80) (min-pixel-height-ignore . 32) (min-pixel-width-ignore . 32) (min-pixel-height-safe . 16) (min-pixel-width-safe . 16)) leaf (pixel-width . 656) (pixel-height . 544) (total-width . 82) (total-height . 34) (normal-height . 1.0) (normal-width . 1.0) (buffer "*scratch*" (selected) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 1) (start . 1))) (((font-backend uniscribe gdi) (font . "-outline-Nitti PX Medium-normal-normal-normal-mono-13-*-*-*-c-*-iso8859-1") (border-width . 2) (internal-border-width . 0) (right-divider-width . 0) (bottom-divider-width . 0) (vertical-scroll-bars) (horizontal-scroll-bars) (foreground-color . "#555") (background-color . "#f6f7f8") (mouse-color . "black") (border-color . "black") (screen-gamma) (line-spacing) (left-fringe . 8) (right-fringe . 8) (alpha) (menu-bar-lines . 0) (tool-bar-lines . 0) (height . 49) (title) (fullscreen) (icon-type) (auto-raise) (auto-lower) (cursor-type . box) (scroll-bar-width . 0) (scroll-bar-height . 0) (display-type . color) (background-mode . light) (cursor-color . "#0e1f5b") (environment) (frameset--id . "96E6-6C0F-3D35-E876") (frameset--mini t . t) (modeline . t) (minibuffer . t) (unsplittable) (icon-name) (visibility . t) (display . "w32") (explicit-name) (tool-bar-position . top) (width . 73) (left . 28) (top . 13)) ((min-height . 28) (min-width . 10) (min-height-ignore . 14) (min-width-ignore . 4) (min-height-safe . 7) (min-width-safe . 2) (min-pixel-height . 448) (min-pixel-width . 80) (min-pixel-height-ignore . 224) (min-pixel-width-ignore . 32) (min-pixel-height-safe . 112) (min-pixel-width-safe . 16)) vc (pixel-width . 604) (pixel-height . 777) (total-width . 76) (total-height . 49) (normal-height . 1.0) (normal-width . 1.0) (combination-limit) (leaf (pixel-width . 604) (pixel-height . 64) (total-width . 76) (total-height . 4) (normal-height . 0.14457455471963915) (normal-width . 1.0) (buffer "0_master.sas" (selected) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 782) (start . 713))) (leaf (pixel-width . 604) (pixel-height . 64) (total-width . 76) (total-height . 4) (normal-height . 0.03217578340628086) (normal-width . 1.0) (buffer "1_queries.sas" (selected) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 5436) (start . 5436))) (leaf (pixel-width . 604) (pixel-height . 64) (total-width . 76) (total-height . 4) (normal-height . 0.03287228572211837) (normal-width . 1.0) (buffer "2_build datasets.sas" (selected) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 10780) (start . 10743))) (leaf (pixel-width . 604) (pixel-height . 64) (total-width . 76) (total-height . 4) (normal-height . 0.032622821467140684) (normal-width . 1.0) (buffer "3_pickups.sas" (selected) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 4874) (start . 4874))) (leaf (pixel-width . 604) (pixel-height . 389) (total-width . 76) (total-height . 25) (normal-height . 0.6417851213708314) (normal-width . 1.0) (buffer "4_deliveries.sas" (selected . t) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 4630) (start . 4370))) (leaf (pixel-width . 604) (pixel-height . 64) (total-width . 76) (total-height . 4) (normal-height . 0.03369665453590678) (normal-width . 1.0) (buffer "5_final processing.sas" (selected) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 6791) (start . 6791))) (leaf (last . t) (pixel-width . 604) (pixel-height . 68) (total-width . 76) (total-height . 4) (normal-height . 0.08227277877808281) (normal-width . 1.0) (buffer "7_Rebuild Final Table.sas" (selected) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 510) (start . 510)))))])
 (setq desktop-missing-file-warning nil)
 (setq tags-file-name nil)
 (setq tags-table-list '("./TAGS" "../TAGS" "../../TAGS"))
-(setq search-ring '("cambria" "mode-line" "faces" "theme" "face" "usa" "theme" "python" "new" "desk" "leafl" "python" "jsond" "final" "match" "font"))
+(setq search-ring '("intransit" "keep" "current " "init" "scrat" "edit" "markked" "proc expand" "majororig" "majororigfcstdata" "minorodsupplydata" "majmktflag" "windmove" "shift" "scrat" "market"))
 (setq regexp-search-ring nil)
-(setq register-alist nil)
-(setq file-name-history '("c:/Users/John.Kropf/Desktop/rezoning/" "c:/Users/John.Kropf/Desktop/rezoning/start.r" "c:/Users/John.Kropf/Desktop/disc_of_analytical_detail.txt" "c:/Users/John.Kropf/Desktop/delimiters.txt" "c:/Users/John.Kropf/Desktop/partscost" "c:/Users/John.Kropf/Desktop/dif" "c:/Users/John.Kropf/Desktop/missingcity.txt" "c:/Users/John.Kropf/Desktop/ramps.sql" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/economistsavingsglut.txt" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/Rezoning.txt" "c:/Users/John.Kropf/Desktop/" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/" "~/.emacs.d/init.el" "c:/Users/John.Kropf/Desktop/emptymiles.r" "~/.emacs.d/init.el" "~/" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/emptymiles.rf" "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el" "c:/Users/John.Kropf/Documents/Projects/Lane by Lane Price Visualization/2014 07 30/refresh/ramp-analysis-percentage.r" "c:/Users/John.Kropf/Desktop/" "c:/Users/John.Kropf/Desktop/sdlkj.r" "t:/price/market based pricing/rezoning/" "c:/Users/John.Kropf/Desktop/scripts/rez.r" "t:/PRICE/Market Based Pricing/Rezoning/R/"))
+(setq register-alist (list (list 7 "Unprintable entity" (let ((mk (make-marker))) (add-hook 'desktop-delay-hook `(lambda nil (set-marker ,mk ,nil (get-buffer ," *temp*")))) mk)) '(48 . "ward") (list 313465889 "Unprintable entity" (let ((mk (make-marker))) (add-hook 'desktop-delay-hook `(lambda nil (set-marker ,mk ,nil (get-buffer ," *temp*")))) mk))))
+(setq file-name-history '("~/.emacs.d/init.el" "c:/sasmodel/v3/output2" "c:/sasmodel/v3/output" "c:/Users/john.kropf/Documents/Project/One Off/csx/" "c:/sasmodel/v3/asdfas" "c:/sasmodel/v3/99_scratch.sas" "c:/sasmodel/v3/0_master.sas" "c:/sasmodel/v3/asdf" "c:/sasmodel/v3/7_Rebuild Final Table.sas" "c:/sasmodel/v3/6_Apply Manual Adjustments.sas" "c:/sasmodel/v3/" "c:/sasmodel/v3/6_manual_post_adjustments.sas" "c:/sasmodel/v3/6_manual_post_adjustments" "c:/sasmodel/v3/fixes" "c:/sasmodel/v2/0_mstr_findadj.sas" "c:/sasmodel/v3/4_deliveries.sas" "c:/sasmodel/v3/3_pickups.sas" "c:/results" "~/.emacs.d/init.el" "c:/sasmodel/v3/0_master.sas" "~/.emacs.d/init.el" "c:/sasmodel/v3/6_build combined table.sas" "c:/sasmodel/v3/5_final processing.sas" "c:/sasmodel/v3/5_build combined table.sas" "c:/sasmodel/" "c:/1234.bas" "c:/Users/john.kropf/4564" "c:/Users/john.kropf/Documents/Project/Rezoning/asim/test against.R" "c:/Users/john.kropf/Documents/Project/Rezoning/getEdges_code.r" "c:/sasmodel/userlib/" "c:/sasmodel/v2/" "~/.emacs.d/init.el" "c:/asdf" "~/.emacs.d/init.el" "c:/0_mstr_finadj.sas" "c:/d2.sas" "c:/0_mastr.sas" "~/.emacs.d/init.el" "c:/Users/john.kropf/Desktop/cluster_redo_1/asdfq" "t:/PRICE/Market Based Pricing/Miscellaneous Projects/2015 - Market Price Model/" "c:/Users/john.kropf/Desktop/cluster_redo_1/zone_compare.sql" "t:/PRICE/Market Based Pricing/Miscellaneous Projects/2015 - Market Price Model/New Zone Comparison/Zone Comparison - Old v New.sql" "~/.emacs.d/init.el" "c:/Users/john.kropf/Desktop/out.txt" "c:/Users/john.kropf/Desktop/deliveries_forecast_qd_proc_formatted.sql" "c:/sasmodel/v2/0_mstr_findadj.sas" "c:/sasmodel/v2/" "c:/Users/john.kropf/asdf" "c:/Users/john.kropf/Desktop/cluster_redo_1/" "c:/Users/john.kropf/Desktop/cluster_redo_1/2.r" "c:/Users/john.kropf/ConfigFiles/.emacs.d/init.el" "c:/Users/john.kropf/Desktop/2do(1).txt" "c:/Users/john.kropf/2do1.txt" "c:/Users/john.kropf/Desktop/Forecast Refreshed.msg" "c:/Users/john.kropf/Desktop/cluster_redo_1/" "c:/Users/asdf" "c:/Users/john.kropf/Desktop/" "c:/Users/john.kropf/asd" "c:/Users/john.kropf/Desktop/cluster_redo_1/1.r" "c:/Users/john.kropf/Desktop/packages.r" "c:/Users/john.kropf/Desktop/cluster_redo_1/" "c:/Users/john.kropf/Desktop/cluster_redo_1" "c:/Users/john.kropf/Desktop/sanity check deliveries.sql" "c:/sasmodel/v2/d3.sas" "c:/Users/john.kropf/Desktop/" "c:/Users/john.kropf/Documents/Project/Rezoning/___cluster2/" "c:/Users/john.kropf/Documents/Project/HDT Comps/truckcomps8.r" "c:/Users/john.kropf/Desktop/packages.r" "c:/Users/john.kropf/Documents/Project/Rezoning/___cluster2/3dzgroups.csv" "~/.emacs.d/init.el" "c:/Users/john.kropf/Documents/Project/Rezoning/___cluster2/3dzgroups.csv" "c:/Users/john.kropf/asdfagasdf" "c:/Users/john.kropf/Documents/asdf.sql" "c:/Users/john.kropf/asdf" "c:/Users/john.kropf/Documents/Project/Rezoning/___cluster2/" "c:/Users/john.kropf/Documents/Project/Rezoning/___cluster2/complete5.r" "c:/Users/john.kropf/Desktop/zone_calcs/" "c:/Users/john.kropf/Documents/Project/Rezoning/___cluster2/" "c:/Users/john.kropf/Desktop/Comp Plots 2/CompDrays2.r" "c:/Users/john.kropf/Desktop/zone_calcs/" "c:/Users/john.kropf/Desktop/zone_calcs/sql.sql" "c:/Users/john.kropf/Documents/Project 2014/Lane by Lane Price Visualization/2014 07 30/refresh/volume-weight-dray-cost.r" "c:/Users/john.kropf/Desktop/zone_calcs/zonecalc.r" "c:/Users/john.kropf/Desktop/zone_calcs/" "c:/Users/john.kropf/Desktop/zone_computations" "c:/desktop/zone_computations" "c:/desktop/zone_sheet.r" "c:/Users/john.kropf/Desktop/packages.r" "c:/sasmodel/v2/0_mstr1.sas" "c:/sasmodel/v2/asdfq" "c:/sasmodel/v2/adsfq" "c:/Users/john.kropf/Desktop/packages.r" "c:/Users/john.kropf/Documents/" "c:/Users/john.kropf/Documents/qwer.r" "c:/Users/john.kropf/Documents/qwer" "c:/sasmodel/v2/sdf" "c:/sasmodel/v2/asdf" "c:/sasmodel/tempdelexec.bat" "c:/Users/john.kropf/Documents/Project/Rezoning/" "c:/sasmodel/"))
 
 ;; Buffer section -- buffers listed in same order as in buffer list:
 (desktop-create-buffer 206
-  "c:/Users/John.Kropf/Desktop/rezoning/start.r"
-  "start.r"
+  "c:/sasmodel/v3/4_deliveries.sas"
+  "4_deliveries.sas"
   'ess-mode
-  '(eldoc-mode auto-complete-mode)
-  11819
-  '(12169 nil)
+  '(auto-complete-mode global-auto-revert-mode)
+  4630
+  '(1 nil)
   nil
   nil
-  '((indent-tabs-mode) (buffer-file-coding-system . iso-latin-1-dos) (overwrite-mode)))
+  '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
 
 (desktop-create-buffer 206
-  "c:/Users/John.Kropf/AppData/Roaming/.emacs.d/init.el"
-  "init.el"
-  'emacs-lisp-mode
-  '(auto-complete-mode)
-  10059
-  '(9488 nil)
+  "c:/sasmodel/v3/7_Rebuild Final Table.sas"
+  "7_Rebuild Final Table.sas"
+  'ess-mode
+  '(auto-complete-mode global-auto-revert-mode)
+  58
+  '(16 nil)
+  nil
+  nil
+  '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
+
+(desktop-create-buffer 206
+  "c:/sasmodel/v3/output2"
+  "output2"
+  'fundamental-mode
+  '(global-auto-revert-mode)
+  162816
+  '(1 nil)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 206
+  "c:/sasmodel/v3/6_Apply Manual Adjustments.sas"
+  "6_Apply Manual Adjustments.sas"
+  'ess-mode
+  '(auto-complete-mode global-auto-revert-mode)
+  1004
+  '(535 nil)
+  nil
+  nil
+  '((indent-tabs-mode) (buffer-file-coding-system . iso-latin-1-dos)))
+
+(desktop-create-buffer 206
+  "c:/sasmodel/v3/5_final processing.sas"
+  "5_final processing.sas"
+  'ess-mode
+  '(auto-complete-mode global-auto-revert-mode)
+  6791
+  '(937 nil)
+  nil
+  nil
+  '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
+
+(desktop-create-buffer 206
+  "c:/sasmodel/v3/3_pickups.sas"
+  "3_pickups.sas"
+  'ess-mode
+  '(auto-complete-mode global-auto-revert-mode)
+  4874
+  '(15427 nil)
+  nil
+  nil
+  '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
+
+(desktop-create-buffer 206
+  "c:/sasmodel/v3/output"
+  "output"
+  'fundamental-mode
+  '(global-auto-revert-mode)
+  74894
+  '(144499 nil)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 206
+  "c:/Users/john.kropf/Desktop/cluster_redo_1/zone_compare.sql"
+  "zone_compare.sql"
+  'sql-mode
+  '(global-auto-revert-mode)
+  1319
+  '(988 nil)
   nil
   nil
   '((buffer-file-coding-system . undecided-dos)))
 
 (desktop-create-buffer 206
-  "c:/Users/John.Kropf/Desktop/economistsavingsglut.txt"
-  "economistsavingsglut.txt"
-  'text-mode
-  '(longlines-mode)
-  1303
-  '(562 nil)
-  nil
-  nil
-  '((buffer-file-coding-system . utf-16-dos)))
-
-(desktop-create-buffer 206
-  "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v3/1/unyson_3.5.1.r"
-  "unyson_3.5.1.r"
+  "c:/sasmodel/v3/1_queries.sas"
+  "1_queries.sas"
   'ess-mode
-  '(eldoc-mode auto-complete-mode)
-  11136
-  '(6664 nil)
+  '(auto-complete-mode global-auto-revert-mode)
+  5436
+  '(1050 nil)
   nil
   nil
   '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
 
 (desktop-create-buffer 206
+  "c:/Users/john.kropf/Desktop/cluster_redo_1/2.r"
+  "2.r"
+  'ess-mode
+  '(eldoc-mode auto-complete-mode global-auto-revert-mode)
+  21622
+  '(37267 nil)
   nil
-  "Roaming"
+  nil
+  '((indent-tabs-mode) (buffer-file-coding-system . utf-8-dos) (overwrite-mode)))
+
+(desktop-create-buffer 206
+  "t:/PRICE/Market Based Pricing/Miscellaneous Projects/2015 - Market Price Model/New Zone Comparison/Zone Comparison - New.sql"
+  "Zone Comparison - New.sql"
+  'sql-mode
+  '(global-auto-revert-mode)
+  1
+  '(10290 nil)
+  nil
+  nil
+  '((buffer-file-coding-system . undecided-dos)))
+
+(desktop-create-buffer 206
+  "c:/sasmodel/v3/99_scratch.sas"
+  "99_scratch.sas"
+  'ess-mode
+  '(auto-complete-mode global-auto-revert-mode)
+  1
+  '(1 nil)
+  nil
+  nil
+  '((indent-tabs-mode)))
+
+(desktop-create-buffer 206
+  nil
+  "v3"
   'dired-mode
-  nil
-  1413
-  '(nil nil)
+  '(global-auto-revert-mode)
+  1160
+  '(1 nil)
   t
-  '("c:/Users/John.Kropf/AppData/Roaming/")
+  '("c:/sasmodel/v3/")
   nil)
 
 (desktop-create-buffer 206
-  "c:/Users/John.Kropf/Documents/Projects/Lane by Lane Price Visualization/2014 07 30/refresh/ramp-analysis-percentage.r"
-  "ramp-analysis-percentage.r<2>"
+  "c:/sasmodel/v3/asdf"
+  "asdf"
+  'fundamental-mode
+  '(global-auto-revert-mode)
+  377
+  '(1 nil)
+  nil
+  nil
+  nil)
+
+(desktop-create-buffer 206
+  "c:/results"
+  "results"
+  'fundamental-mode
+  '(global-auto-revert-mode)
+  25293032
+  '(271194 nil)
+  nil
+  nil
+  '((buffer-file-coding-system . raw-text-dos)))
+
+(desktop-create-buffer 206
+  "c:/sasmodel/v3/2_build datasets.sas"
+  "2_build datasets.sas"
   'ess-mode
-  '(eldoc-mode auto-complete-mode)
-  5716
-  '(4329 nil)
+  '(auto-complete-mode global-auto-revert-mode)
+  10780
+  '(4813 nil)
   nil
   nil
   '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
 
 (desktop-create-buffer 206
-  "c:/Users/John.Kropf/Documents/Projects/Unyson Comp Catalog/r v3/1/sheet.py"
-  "sheet.py"
-  'python-mode
-  '(auto-complete-mode)
-  1181
-  '(851 nil)
+  "c:/sasmodel/v3/0_master.sas"
+  "0_master.sas"
+  'ess-mode
+  '(auto-complete-mode global-auto-revert-mode)
+  782
+  '(342 nil)
   nil
   nil
-  '((tab-width . 2) (indent-tabs-mode) (buffer-file-coding-system . undecided-dos) (overwrite-mode)))
-
-(desktop-create-buffer 206
-  nil
-  "ramp-analysis-percentage.r"
-  'dired-mode
-  nil
-  243
-  '(nil nil)
-  t
-  '("c:/Users/John.Kropf/Documents/Projects/Lane by Lane Price Visualization/2014 07 30/refresh/ramp-analysis-percentage.r")
-  nil)
+  '((indent-tabs-mode) (buffer-file-coding-system . undecided-dos)))
 

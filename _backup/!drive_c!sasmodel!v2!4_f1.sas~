@@ -1,0 +1,76 @@
+%inclue 'c:\sasmodel\v2\4.1_fcst_turntime.sas';
+
+proc sort data= work.alldataplus;
+    by eqid loaddt;
+run;
+
+/* Boxes in transit first */
+
+data work.intransit;
+    set work.alldataplus;
+    if lastdtdef EQ 'LD';
+    lastevdate = datepart(lastdt);
+    if lastevdate GE intnx('day',&today,-1*(&fcstoffset + &transupdays));    
+run;
+
+proc sort data= work.intransit;
+    by fcstorig fcstdest;
+run;
+
+data work.transit;
+    merge work.intransit hublib.transitmedian;
+    if loadtonotify50 EQ . then loadtonotify50 = 6;
+    /* lastevdate = datepart(lastdt); */
+    put lastevdate;
+    projnotifydt = intnx('day',lastevdate,loadtonotify50);
+    if lastevdate GE intnx('day',&today,-1*(&fcstoffset + &transupdays));
+run;
+
+data work.turn;
+    set work.alldataplus;
+    lastevdate = datepart(lastdt);
+    if lastevdate GE intnx('day',&today,-1*(&fcstoffset + &transupdays));
+    if lastdtdef in ('ET,'AR');
+    if lastdtdef EQ 'AR' then projnotifydt = notifydt;
+    if fleetavailableflag EQ 'Y';
+run;
+
+data work.move;
+    set work.transit work.turn;
+    format notifydt date9. projnotifyday date9.;
+    notifyday = datepart(projnotifydt);
+    notifydow = weekday(notifyday);
+    projnotifyday = datepart(projnotifydt);
+    if projnotifyday LT intnx('day',&today,-4) then
+        projnotifyday = intinx('day',&today,-4);
+run;
+
+proc sort data= work.move;
+    by fcstdest notifydow destcompname;
+    run;
+
+proc sort data= hublib.turntimedowdist;
+    by fcstdest notifydow;
+run;
+
+data work.plusturntime;
+    merge work.move hublib.turntimedowdist;
+    by fcstdest notifydow;
+run;
+
+data work.moveorturn;
+    set work.plusturntime;
+    format supplydt date9. supplydt2 date9. notifyday date9. projnotifyday date9.;
+    supplydt = intnx('day',projnotifyday,nottounloaddays);
+    if supplydt GT &today;
+    loads = percent/100;
+run;
+
+/* Current moving boxes complete */
+
+/* Forecasted supply boxes */
+
+
+
+
+

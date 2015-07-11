@@ -1,0 +1,9 @@
+%include "c:\sasmodel\v3\0_master.sas";
+%include "c:\sasmodel\v3\1_queries.sas";
+%include "c:\sasmodel\v3\2_build datasets.sas";
+%include "c:\sasmodel\v3\3_pickups.sas";
+%include "c:\sasmodel\v3\4_deliveries.sas";
+%include "c:\sasmodel\v3\5_final processing.sas";
+%include "c:\sasmodel\v3\6_Apply Manual Adjustments.sas";
+%include "c:\sasmodel\v3\7_Rebuild Final Table.sas";
+ 

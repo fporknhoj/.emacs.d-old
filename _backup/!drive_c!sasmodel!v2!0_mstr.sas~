@@ -1,0 +1,433 @@
+*options pagesize=80 linesize=80 pageno=1; *nodate ;
+
+/*data _null_;
+startdate = date();
+today = date();
+*call symput('startdate',"'"||trim(left(put(startdate, date9.)))||"'");
+call symput('today',"'"||trim(left(put(today, date9.)))||"'");
+call symput('startdate',input(strip(startdate),date9.);
+run;*/
+
+x 'cd c:\users\john.kropf\sas graphs';
+
+options nodate pageno=1 linesize=80 pagesize=60 source;
+
+libname dwpa odbc dsn='dw_pa' schema=dbo;
+libname hublib 'c:\sasmodel\datasets';
+libname out 'c:\sasmodel\output\';
+
+*proc printto print='c:\sasmodel\output\sample' new;
+*proc printto print='c:\fire' new;
+run;
+
+****************************
+define today macro variables
+****************************;
+*%let startdate= %sysevalf('29MAY2015'd);
+*%let today = %sysevalf('29MAY2015'd);
+%let startdate   = %sysfunc(date());
+%let today       = %sysfunc(date());
+%put &startdate;
+%put &today;
+
+****************************
+define other macro variables
+****************************;
+%let cursupdays  = 2;    * number of days rail controlled (non-fleet) boxes stay in Hub's control after CU;
+%let fltsupdays  = 120;  * number of days fleet boxes are considered supply - longer must be bad data;
+%let turnsupdays = 120;  * if last event implies street turning, wait 120 days mzx before throwing out data;
+%let transupdays = 120;  * if last event implies in rail transit, wait 120 days mzx before throwing out data;
+%let fcsthoriz   = 13;   * today plus 13 more days = 14 day forecast;
+%let fcstoffset  = 0;    * if you want the forcst to start yesterday, offset=1, etc.;
+%let histrange   = 525;  * days of history for creating forecast;
+
+*%include 'c:\sasmodel\v2\1_base_data.sas';
+%include 'c:\sasmodel\v2\2_data_munging_demand.sas';
+%include 'c:\sasmodel\v2\3_fcast_demand.sas';
+*%include 'c:\sasmodel\v2\4_fcst_supply.sas';
+*%include 'c:\sasmodel\';
+*%include 'c:\sasmodel\';
+*%include 'c:\sasmodel\';
+
+*************
+Format output
+*************;
+
+proc sql;
+	connect to odbc as dw2 (datasrc="DW2");
+    create table avgout as select * from connection to dw2 
+    (
+        select OriginRampSubMarket as fcstorig 
+        ,      DestinationRampSubMarket as fcstdest 
+        ,      datepart(weekday,DSRDate) as dow
+        ,      convert(float,sum(volume))/8 as loads
+		from OperationalSummary
+        where DSRDate between DATEADD(MONTH, -2, current_timestamp) and current_timestamp
+            and transportationmode = 'iml'
+            and transportationsubmode = ''
+            and origincity <> ''
+            and destinationcity <> ''
+            and originrampsubmarket <> ''
+            and destinationrampsubmarket <> ''
+        group by OriginRampSubMarket
+        ,        DestinationRampSubMarket
+        ,        datepart(weekday,DSRDate)
+    );
+
+	create table past2wks as select * from connection to dw2
+	(
+		select OriginRampMarket
+		,      DestinationRampMarket
+		,      OriginRampSubMarket
+		,      DestinationRampSubMarket
+		,      convert(date,DSRDate) as ForecastDate
+		,      SUM(volume) as Volume
+		from OperationalSummary
+		where DSRDate >= dateadd(WEEK ,-2 ,GETDATE())
+			and TransportationMode in ('IML')
+			and transportationsubmode=''
+			and origincity<>''
+			and destinationcity<>''
+			and orderstatus in ('DSP','RBL','DLV')
+			and EquipmentCategory <> 'ISO'
+			and not(loadnumber is null)
+		group by OriginRampMarket
+		,        DestinationRampMarket
+		,        OriginRampSubMarket
+		,        DestinationRampSubMarket
+		,        DSRDate
+
+	);
+
+	disconnect from dw2;
+
+    *create table for zzoth destinations;
+	create table avgoutorigonly as (
+	select fcstorig as fcstorig
+	,      "All" as fcstdest
+    ,      dow as dow
+    ,      avg(loads)
+    from avgout
+    group by fcstorig
+    ,        dow 
+    );
+quit;
+
+*Combine od and o only average out times;
+data avgout2;
+set avgout avgoutorigonly;
+run;
+
+*set dest column for small market fcst;
+data work.zzothfcst;
+retain fcst fcstorig fcstdest fcstdt;
+fcstdest="All";
+set HUBLIB.otherdemandfcst;
+run;
+
+*Format output data;
+data prefcstoutput;
+set hublib.majordemandfcst zzothfcst;
+est = round(fcst,.01);
+if fcst < 0 then est = 0;
+run;
+
+proc sql;
+	*join table of historical volumes with forecast output tables;
+	create table finalfcstoutput as (
+    select a.*
+    ,      b.loads as act_avg_vol
+    from prefcstoutput a
+    left join avgout2 b 
+    on a.fcstorig = b.fcstorig and
+       a.fcstdest = b.fcstdest and
+       weekday(a.fcstdt) = b.dow
+    );
+quit;
+
+
+*do weekend adjustments;
+data finalfcstoutput;
+set finalfcstoutput;
+if weekday(fcstdt) in (1,7) then weekendest = (est-act_avg_vol)/2;
+if weekday(fcstdt) in (1,7) then est = act_avg_vol;
+run;
+data sunfri;
+set finalfcstoutput;
+keep fcstorig fcstdest fcstdt wkendest;
+if weekday(fcstdt) = 1;
+fcstdt = intnx('day',fcstdt,-2);
+data sunmon;
+set finalfcstoutput;
+keep fcstorig fcstdest fcstdt wkendest;
+if weekday(fcstdt) = 1;
+fcstdt = intnx('day',fcstdt,1);
+data satfri;
+set finalfcstoutput;
+keep fcstorig fcstdest fcstdt wkendest;
+if weekday(fcstdt) = 7;
+fcstdt = intnx('day',fcstdt,-1);
+data satmon;
+set finalfcstoutput;
+keep fcstorig fcstdest fcstdt wkendest;
+if weekday(fcstdt) = 7;
+fcstdt = intnx('day',fcstdt,2);
+run;
+proc datasets library=work noprint;
+modify sunfri;
+rename wkendest=sunfri;
+modify sunmon;
+rename wkendest=sunmon;
+modify satfri;
+rename wkendest=satfri;
+modify satmon;
+rename wkendest=satmon;
+quit;
+proc sort data=sunfri;
+by fcstorig fcstdest fcstdt;
+proc sort data=sunmon;
+by fcstorig fcstdest fcstdt;
+proc sort data=satfri;
+by fcstorig fcstdest fcstdt;
+proc sort data=satmon;
+by fcstorig fcstdest fcstdt;
+run;
+data weekend;
+merge sunfri sunmon satfri satmon;
+by fcstorig fcstdest fcstdt;
+run;
+data weekend;
+set weekend;
+if sunfri eq . then sunfri = 0;
+if sunmon eq . then sunmon = 0;
+if satfri eq . then satfri = 0;
+if satmon eq . then satmon = 0;
+monest = satmon+sunmon;
+friest = satfri+sunfri;
+wkendnew = satmon+satfri+sunmon+sunfri;
+keep fcstorig fcstdest fcstdt wkendnew;
+run;
+proc sort data=weekend;
+by fcstorig fcstdest fcstdt;
+proc sort data=finalfcstoutput;
+by fcstorig fcstdest fcstdt;
+run;
+data finalfcstoutput3;
+set finalfcstoutput;
+merge finalfcstoutput(in=in1) weekend;
+by fcstorig fcstdest fcstdt;
+run;
+data finalfcstoutput;
+set finalfcstoutput;
+if est = . then est = 0;
+if wkendnew = . then wkendnew = 0;
+est = est + wkendnew;
+rename fcst = type;
+type = "Predicted";
+keep type fcstorig fcstdest fcstdt est;
+run;
+
+
+*order vars;
+data finalfcstoutput;
+retain fcstorig fcstdest fcstdt est;
+set finalfcstoutput;
+keep fcstorig fcstdest fcstdt est;
+*create RampMarket Variables;
+data finalfcstoutput;
+set finalfcstoutput;
+if fcstorig in ('ATLAR','ATLAL') then OriginRampMarket = 'ATLA ';
+else if fcstorig in ('DALL ','DALR ') then OriginRampMarket = 'DALAS';
+else if fcstorig in ('CHOH ','CHIN ','CHMI ','CHWI ','CHIL ','CHMET','CHCAN') then OriginRampMarket = 'CHGO ';
+else OriginRampMarket = fcstorig;
+if fcstdest in ('ATLAR','ATLAL') then DestinationRampMarket = 'ATLA ';
+else if fcstdest in ('DALL ','DALR ') then DestinationRampMarket = 'DALAS';
+else if fcstdest in ('CHOH ','CHIN ','CHMI ','CHWI ','CHIL ','CHMET','CHCAN') then DestinationRampMarket = 'CHGO ';
+else DestinationRampMarket = fcstdest;
+*rename other variables;
+data finalfcstoutput;
+set finalfcstoutput;
+rename fcstorig = OriginRampSubMarket;
+rename fcstdest = DestinationRampSubMarket;
+rename fcstdt = ForecastDate;
+rename est = Volume;
+*reorder variables;
+data finalfcstoutput;
+retain OriginRampMarket DestinationRampMarket 
+       OriginRampSubMarket DestinationRampSubMarket 
+       ForecastDate Volume;
+set finalfcstoutput;
+run;
+
+*Change date format from text to number on past data so union will work;
+data past2wks;
+set past2wks;
+ForecastDate2 = input(strip(ForecastDate),yymmdd10.);
+drop ForecastDate;
+data past2wks;
+set past2wks;
+rename ForecastDate2 = ForecastDate;
+*drop ForecastDate2;
+data past2wks;
+retain OriginRampMarket DestinationRampMarket 
+	   OriginRampSubMarket DestinationRampSubMarket
+	   ForecastDate Volume;
+set past2wks;
+format ForecastDate date9.;
+run;
+
+*stack actuals and forecasted volumes;
+data finalfcstoutput;
+set past2wks finalfcstoutput;
+run;
+
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***************** make manual adjustments *****************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/*
+proc import datafile= 'c:\matt.csv' dbms= csv out= work.outsideadj replace;
+run;
+
+data work.outsideadj;
+	set work.outsideadj;
+	rename o_mkt = OriginRampMarket;
+	rename Adj__ = adj;
+run;
+
+proc contents data= work.outsideadj;
+run;
+
+proc sort data= work.outsideadj;
+	by OriginRampMarket;
+run;
+
+proc sort data= finalfcstoutput;
+	by OriginRampMarket;
+run;
+
+proc contents data= finalfcstoutput;
+run;
+
+data finalfcstoutput2;
+	merge finalfcstoutput outsideadj;
+	by originrampmarket;
+run;
+
+data finalfcstoutput2; 
+	set finalfcstoutput2;
+	format Volume 3.2;
+	if ForecastDate le intnx('day',today(),-1) then adj = .;
+	if adj = . then adj = 1;
+	Volume = adj * Volume;
+	drop adj;
+run;
+
+proc export data= finalfcstoutput2 dbms= csv replace outfile= 'c:\out2.csv';run;
+
+/*data finalfcstoutput2;
+	set finalfcstoutput2;
+	Volume2 = Volume * adj;
+	put Volume2;
+run;*/
+
+
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+
+*Write table to PA;
+libname dwpa odbc dsn='dw_pa' schema=dbo;
+
+proc datasets library = dwpa noprint;
+delete big_box_demand_forecast_2_weeks;
+run;
+
+data dwpa.big_box_demand_forecast_2_weeks;
+set finalfcstoutput;
+run;
+/*
+proc datasets library= dwpa noprint;
+delete big_box_demand_forecast_updated;
+run;
+
+proc sql;
+create table dwpa.big_box_demand_forecast_updated 
+(OriginRampMarket char(5)
+,DestinationRampMarket char(5)
+,OriginRampSubMarket char(5)
+,DestinationRampSubMarket char(5)
+,ForecastDate date
+,Volume float);
+insert into dwpa.big_box_demand_forecast_updated
+select * from finalfcstoutput2;
+quit;
+
+
+
+
+data dwpa.big_box_demand_forecast_updated;
+set finalfcstoutput2;
+format Volume 3.0;
+run;
+
+**************************************************************;
+**************************************************************;
+**************************************************************;
+**************************************************************;
+
+/*proc sql;
+drop table dwpa.big_box_demand_forecast_2_weeks;
+
+create table dwpa.big_box_demand_forecast_2_weeks as
+select * 
+from finalfcstoutput;
+quit;*/
+
+/*proc sql;
+create table dwpa.big_box_demand_forecast_2_weeks as
+select 
+ case when fcstorig in ('ATLAR','ATLAL') then 'ATLA '
+      when fcstorig in ('DALL ','DALR ') then 'DALAS'
+      when fcstorig in ('CHOH ','CHIN ','CHMI ','CHWI ','CHIL ','CHMET','CHCAN') then 'CHGO'
+	  else fcstorig end as OriginRampMarket
+,case when fcstdest in ('ATLAR','ATLAL') then 'ATLA '
+      when fcstdest in ('DALL ','DALR ') then 'DALAS'
+      when fcstdest in ('CHOH ','CHIN ','CHMI ','CHWI ','CHIL ','CHMET','CHCAN') then 'CHGO'
+	  else fcstdest end as DestinationRampMarket
+,fcstorig as OriginRampSubMarket
+,fcstdest as DestinationRampSubMarket
+,fcstdt as ForecastDate
+,est as ForecastEstimate
+from finalfcstoutput;
+quit;*/
+
+/*proc export data=finalfcstoutput
+			  dbms=csv
+			  outfile='c:\fcst8.csv'
+			  replace;
+run;*/
+
+/*proc export data=finalfcstoutput
+dbms=csv
+outfile='c:\1.csv'
+replace;
+proc export data=past2wks
+dbms=csv
+outfile='c:\0.csv'
+replace;
+run;*/
+
+/* *reorder values;
+data finalfcstoutput2;
+retain OriginRampMarket DestinationRampMarket 
+	   OriginRampSubMarket DestinationRampSubMarket
+	   ForecastDate Volume;
+set finalfcstoutput;*/

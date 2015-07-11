@@ -1,0 +1,329 @@
+version = 0.1
+
+from sqlalchemy import create_engine
+import numpy as np
+import pandas as pd
+
+#TODO: YOUR SQL QUERY NEEDS TO TAKE BOTH FEE'd and NON-FEE'd
+def fetch_pba_by_id(bid_id, db="DWPA"):
+    """Retrive a Pandas DataFrame from `db` (either DWPA or PBA_1.2).
+
+    [Integer] -> [DataFrame]
+    Depends on SQLAlchemy+create_engine
+    """
+    if not isinstance(bid_id, (int)): raise NameError("ID is not an int")
+    if db == "DWPA":
+        conn = create_engine("mssql+pyodbc://DWPA/?LANGUAGE=us_english")
+        conn.connect()
+        source_table = "DW_PA.dbo.MasterPBATable"
+    elif db == "PBA":
+        from pyodbc import connect
+        path_to_pba = \
+                      r"T:\PRICE\Market Based Pricing\Weekly Bid Progress Report\PBA Files\PBA Automation Project\PBA Automation_1.2.mdb;"
+        conn_str = 'DRIVER={Microsoft Access Driver (*.mdb)};DBQ=%s;' % path_to_pba
+        conn = connect(conn_str)
+        source_table = "[100 - Master PBA Table]"
+    else:
+        raise NameError("Wrong argument: db must be DWPA or PBA")
+
+    sql = """
+    select * from {source_table}
+    where [Bid ID] = {bid_id}
+    and [Duplicate] = 'N'
+    """.format(bid_id = bid_id, source_table=source_table)
+
+    out_df = pd.read_sql(sql, conn)
+    # Cleans up the columns so that there aren't any spaces
+    # TODO: Clean out non-alphanumeric symbols from column names
+    # map(lambda x: x.replace('%', 'pct'))
+    out_df.columns = map(lambda x: x.replace(' ', ''), out_df.columns)
+    return(out_df)
+
+def fetch_all_id_after(start_date, db="DWPA"):
+    """Takes a date and returns all bid ids that fall on or after that date
+    from the specified database.
+
+    [String (Date)] -> [List (Floats)]
+    """
+
+    # The following if/else block can be turned into a db handler
+    if db == "DWPA":
+        conn = create_engine("mssql+pyodbc://DWPA/?LANGUAGE=us_english")
+        conn.connect()
+        source_table = "DW_PA.dbo.MasterPBATable"
+        start_date = "'%s'" % start_date  # surround start_date w/ ''
+    elif db == "PBA":
+        from pyodbc import connect
+        path_to_pba = \
+                      r"T:\PRICE\Market Based Pricing\Weekly Bid Progress Report\PBA Files\PBA Automation Project\PBA Automation_1.2.mdb;"
+        conn_str = 'DRIVER={Microsoft Access Driver (*.mdb)};DBQ=%s;' % path_to_pba
+        conn = connect(conn_str)
+        source_table = "[100 - Master PBA Table]"
+        start_date = "#%s#" % start_date  # surround start_date w/ ''
+    else:
+        raise NameError("Wrong argument: db must be DWPA or PBA")
+
+    sql = """
+    select distinct [Bid ID] from {source_table}
+    where [Expected Start Date] >= {start_date}
+    """.format(start_date=start_date, source_table=source_table)
+
+    list_of_tuples = conn.execute(sql).fetchall()
+    # conn.execute() returns a list of one item tuples: you have to flatten the
+    # list with a double for loop list comprehension
+    bid_list = [bid for row in list_of_tuples for bid in row]
+    return(bid_list)
+
+def get_vol_summary(df):
+    cols = ["AwardedVolume", "Prior6mosAnnualized"]
+    in_df= df[cols].apply(np.sum)
+    out_df = pd.Series()
+    out_df['award_vol'] = in_df.AwardedVolume
+    out_df['hist_vol'] = in_df.Prior6mosAnnualized
+    out_df['vol_change'] = out_df.award_vol - out_df.hist_vol
+    # out_df['vol_change'] = in_df.AwardedVolume - in_df.Prior6mosAnnualized
+    return(out_df)
+
+def get_new_volume(df):
+    # TODO: Consider if this is a good idea... This is separate from the vol
+    # summary method. It may be best to split most of these methods up.
+    out = np.sum(df.loc[df["LaneStatus"]=="NEW", "AwardedVolume"])
+    return(out)
+
+# Consider using closures here to remove some of the clutter when it gets
+# passed to the mk_pba_summary method
+def get_price_summary(df):
+    cols = ['AllInRev_HistVolWgt', 'RevChg_HistVolWgt', 'Prior6mosAnnualized', 'AwardedVolume',
+            'AllInRev_AwardVolWgt', 'RevChg_AwardVolWgt']
+    sdf = df[cols].apply(np.sum) # sdf for [s]ummary [d]ata[f]rame
+    out_df = pd.Series()
+    ## P1 Mix (Historical)
+    sdf['rpu_hist'] = (sdf.AllInRev_HistVolWgt - sdf.RevChg_HistVolWgt)/sdf.Prior6mosAnnualized
+    sdf['rpu_award_p1mix'] = sdf.AllInRev_HistVolWgt/sdf.Prior6mosAnnualized
+    sdf['rpu_change_p1mix'] = sdf.rpu_award_p1mix - sdf.rpu_hist
+    out_df['rpu_pct_change_p1mix'] = sdf.rpu_change_p1mix/sdf.rpu_hist
+    ## P2 Mix (Award)
+    sdf['rpu_award'] = sdf.AllInRev_AwardVolWgt/sdf.AwardedVolume
+    sdf['rpu_hist_p2mix'] = (sdf.AllInRev_AwardVolWgt - sdf.RevChg_AwardVolWgt)/sdf.AwardedVolume
+    sdf['rpu_change_p2mix'] = sdf.rpu_award - sdf.rpu_hist_p2mix
+    out_df['rpu_pct_change_p2mix'] = sdf.rpu_change_p2mix / sdf.rpu_hist_p2mix
+    return(out_df)
+
+def get_mpu_summary(df):
+    # TODO: to get MPU, you have to take everything, not just fee'd lane
+    cols = ["AwardedVolume", "MINGoalTotalMargin", "MINParityTotalMargin",
+            "FeebyRteWgt", "AwardVolumeWeighted", "HistoricalFeebyRteWeighted",
+            "HistoricalVolWeighted"]
+    in_df = df[cols].apply(np.sum)
+    out_df = pd.Series()
+    out_df['target_mpu'] = in_df.MINParityTotalMargin / in_df.AwardedVolume
+    out_df['stretch_mpu'] = in_df.MINGoalTotalMargin / in_df.AwardedVolume
+    out_df['blended_mpu'] = in_df.FeebyRteWgt / in_df.AwardVolumeWeighted
+    out_df['hist_blended_mpu'] = \
+                                 in_df.HistoricalFeebyRteWeighted / in_df.HistoricalVolWeighted
+    return(out_df)
+
+def get_goal_pct_summary(df):
+    mpu_cols = ['TargetMinMPU', 'StretchMinMPU', 'AwardMargin', 'AwardedVolume']
+    margin_df = df[mpu_cols]
+    margin_df["margin"] = margin_df.AwardMargin / margin_df.AwardedVolume
+    goal_out = pd.Series() # Initialize the dict where we're going to put the values
+
+    # Sum the volume where Margin/Volume > TargetMinMPU
+    target_mask = margin_df.margin > margin_df.TargetMinMPU
+    goal_out['pct_target'] = \
+                             np.sum(margin_df.loc[target_mask, "AwardedVolume"]) \
+                             / np.sum(margin_df.AwardedVolume)
+
+    # Sum the volume where Margin/Volume > StretchMinMPU
+    stretch_mask = margin_df.margin > margin_df.StretchMinMPU
+    goal_out['pct_stretch'] = \
+                              np.sum(margin_df.loc[stretch_mask, "AwardedVolume"]) \
+                              / np.sum(margin_df.AwardedVolume)
+
+    # Margin a.k.a. Weighted Fee in the PBA
+    goal_out['margin'] = \
+                         np.sum(margin_df.AwardMargin)/np.sum(margin_df.AwardedVolume)
+    return(goal_out)
+
+# TODO: Make this into a class
+def mk_pba_summary(bid_id, db="DWPA"):
+    df = fetch_pba_by_id(bid_id, db)
+
+    #TODO: IF the following two lines are placed below with other out_dict, I
+    # get a KeyError. Why is that?
+    out_dict = {}
+    out_dict['cust_name'] = df['CustomerName'][0].strip()
+
+    df = df[df["Display"] != "Do Not Display"]
+    # It seems like you're always supposed to filter out 'N/A' lane status
+    df = df[df['LaneStatus'] != 'N/A'] # Added 12/23/2014
+    feed_df = df[df["Fee'dLane"]=="Y"]
+    awarded_df = df[df["AwardedY/N"]=="Primary"]
+    fee_and_award_df = feed_df[(feed_df["AwardedY/N"]=='Primary') & (feed_df['MissingTarget-Stretch'] == 'N')]
+    fee_incumbent_df = df[(df['LaneStatus'] == 'INCUMBENT') & (df["Fee'dLane"] == 'Y')]
+
+    # TODO: Clean this up, and verify that it's using the right version of the
+    # pricing sheet data.
+    out_dict['description'] = None
+    out_dict['date_effective'] = None
+    out_dict['award_vol'] = get_vol_summary(feed_df).award_vol
+    out_dict['vol_change'] = get_vol_summary(feed_df).vol_change
+    out_dict['hist_vol'] = get_vol_summary(feed_df).hist_vol
+    out_dict['new_vol'] = get_new_volume(feed_df)
+    out_dict['blended_mpu'] = get_mpu_summary(awarded_df).blended_mpu
+    out_dict['hist_blended_mpu'] = get_mpu_summary(df).hist_blended_mpu
+    out_dict['price_change'] = get_price_summary(fee_incumbent_df).rpu_pct_change_p2mix
+    out_dict['margin'] = get_goal_pct_summary(fee_and_award_df).margin
+    out_dict['target_mpu'] = get_mpu_summary(fee_and_award_df).target_mpu
+    out_dict['stretch_mpu'] = get_mpu_summary(fee_and_award_df).stretch_mpu
+    out_dict['pct_target'] = get_goal_pct_summary(fee_and_award_df).pct_target
+    out_dict['pct_stretch'] = get_goal_pct_summary(fee_and_award_df).pct_stretch
+    return(out_dict)
+
+def rm_bid_from(bid_id, db):
+    """Removes all bid entries from db, if applicable
+
+    [Integer] -> NULL
+    In the future, this function could return TRUE if it succeeds in removing
+    entries and FALSE if not.
+    """
+    databases = ["DWPA", "PBA", "FORECAST"]
+    if not isinstance(bid_id, (int, long)):
+        raise NameError("Bid ID is not an integer.")
+
+    if db == "DWPA":
+        engine = create_engine("mssql+pyodbc://DWPA/?LANGUAGE=us_english")
+        cursor = engine.connect()
+        table = "DW_PA.dbo.MasterPBATable"
+    elif db == "PBA":
+        from pyodbc import connect
+        path_to_pba = \
+                      r"T:\PRICE\Market Based Pricing\Weekly Bid Progress Report\PBA Files\PBA Automation Project\PBA Automation_1.2.mdb;"
+        conn_str = 'DRIVER={Microsoft Access Driver (*.mdb)};DBQ=%s;' % path_to_pba
+        conn = connect(conn_str, autocommit = True)
+        cursor = conn.cursor()
+        table = "[100 - Master PBA Table]"
+        # Start transaction, see note below
+        # trans = cursor.begin()
+    elif db.lower() == "forecast":
+        raise NameError("NOT IMPLEMENTED YET")
+        path_to_db = \
+                 r"C:\Users\troy.defreitas\proj\forecast\Hub IML Forecast.db"
+        conn_str = 'DRIVER={Microsoft Access Driver (*.mdb)};DBQ=%s;' % path_to_db
+        conn = connect(conn_str)
+        cursor = conn.cursor()
+        table = "[tbl Lane Data_ORIGINATOR]"
+
+    elif db.lower() == "all":
+        for i in databases:
+            # Calls the function recursively for all dbs and then exits
+            rm_bid_from(bid_id, i)
+        else:
+            return(True)
+    else:
+        raise NameError("Wrong argument: db must be DWPA or PBA")
+
+
+    sql = """
+    delete from {table}
+    where [Bid ID] = {bid_id}
+    """.format(table=table, bid_id=bid_id)
+
+    cursor.execute(sql)
+
+    # pyodbc won't delete unless you commit. I don't know if sqlalchemy
+    # supports this functionality above...
+    # if db == 'PBA':
+    # trans.commit()
+    # cursor.close()
+    return(True)
+
+########################################################
+########################################################
+########################################################
+########################################################
+########################################################
+########################################################
+
+def get_bid_info(bidid):
+    from pyodbc import connect
+    path = r"T:\PRICE\Market Based Pricing\Weekly Bid Progress Report\PBA Files\PBA Automation Project\PBA Tracking Tool.mdb;"
+    cstr = 'DRIVER={Microsoft Access Driver (*.mdb)};DBQ=%s;' % path
+    conn = connect(cstr)
+    source_table = "[01 - PBA Tracking]"
+
+    query = """
+     select Description, file_path
+     from {source}
+     where bid_id = {bidid}""".format(source = source, bidid=bidid)
+
+    results = conn.execute(sql).fetchall()
+    return results
+
+def makePbaHtmlFile(bidid,pbatype,year,link):
+    a = fetch_pba_by_id(bidid)
+    b = mk_pba_summary(bidid)
+    c = {'pba_type':pbatype, 'year':year}
+    b.update(c)
+
+    output = """
+    <head>
+    <style>
+    p {{
+         font family: "Calibri";
+    }}
+    </style>
+    <html>
+    <body>
+    <p>
+    The attached links contain the post-bid analysis of the <strong> {cust_name} {pba_type} {year} </strong> PBA. The file consists of the following sheets:
+    </p>
+    <ol>
+    <li>Price Change Analysis </li>
+    <li>Benchmark Comparison </li>
+    <li>VRM - Blended Analysis </li>
+    <li>VMPC Analysis </li>
+    <li>Award Volume Change by Rail </li>
+    <li>Volume Change by Ramp </li>
+    <li>Volume Change by Region </li>
+    <li>Drayage Impact </li>
+    <li>Pricing Guidelines </li>
+    </ol>
+    <p>
+    To briefly summarize the results:
+    </p>
+    <ul>
+    <li>The awarded volume is <strong> {award_vol:.0f} </strong> intermodal loads.</li>
+    <li>The average MIN Blended MPU of the awarded lanes is <strong> ${blended_mpu:.0f}</strong>, as compared to a <strong> Historical Blended MPU of ${hist_blended_mpu:.0f}</strong>. </li>
+    <li>The <strong> Price Change </strong> on incumbent business is <strong>{price_change:.0%}</strong>.</li>
+    <li>The <strong>Volume Change </strong> is <strong>{vol_change:.0f}</strong> intermodal loads.</li>
+    <li>The weighted <strong>Fee is ${margin:.0f} </strong> which compares to a <strong> Target MPU of ${target_mpu:.0f} </strong> and a <strong> Stretch MPU of ${stretch_mpu:.0f}</strong>.</li>
+    <li><strong>{pct_target:.0%}</strong> of the awarded intermodal business was Priced to Guidelines and <strong>{pct_stretch:.0%}</strong> was priced at the Stretch or Greater.</li>
+    </ul>
+    """.format(**b) + """<a href="""+link+""">"""+link+"""</h>"""
+
+    #with open(r'%userprofile%\desktop\output.html', 'w') as f:
+    with open(os.path.expanduser(r"~Desktop\output.html"), 'w') as f:
+        f.write(output)
+
+    return output
+
+
+
+import pypyodbc as od
+pth = r"T:\PRICE\Market Based Pricing\Weekly Bid Progress Report\PBA Files\PBA Automation Project\PBA Tracking Tool.mdb"
+cst = 'Driver={Microsoft Access Driver (*.mdb)};DBQ=%s;' % pth
+sql = 'select * from [01 - PBA Tracking]'
+ct = od.connect(cst)
+a = ct.cursor().execute(sql).commit()
+
+
+
+
+
+
+#makePbaHtmlFile(921856,'Full Network','2015',
+#r"T:\PRICE\WILLIAMS-SONOMA INC\BIDS 2015\07
+#- POST-BID ANALYSIS\Post Bid Analysis-
+#Williams Sonoma Full Network 2015.xlsx")

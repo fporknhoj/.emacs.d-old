@@ -1,0 +1,429 @@
+options(max.print=100)
+require(XLConnect)
+require(RODBC)
+require(data.table)
+
+# Highway, Mode and Unyson Comps  
+##################################################################
+DB1 <- odbcDriverConnect('driver={SQL Server};server=HUBDWDB01;database=DW2;trusted_connection=true')
+
+hmu <- data.table(sqlQuery(DB1, "
+					select distinct coalesce(highway.opt, mode.opt, unyson.opt) as OriginPoint
+						, coalesce(highway.dpt, mode.dpt, mode.dpt) as DestPoint
+						, coalesce(highway.ozip3, mode.originzip3, unyson.ozip) as OrizinZip3
+						, coalesce(highway.dzip3, mode.destinationzip3, unyson.dzip) as DestZip3
+						, highway.avgCost as HighwayCPU --  coalesce(highway.avgCost, 0) as HighwayCPU
+						, highway.avgRevenue as HighwayRPU --  coalesce(highway.avgRevenue, 0) as HighwayRPU
+						, mode.TotalCPUperM as ModeCPU --  coalesce(mode.TotalCPU, 0) as ModeCPU
+						, mode.TotalRPUperM as ModeRPU --  coalesce(mode.TotalRPU, 0) as ModeRPU
+						, unyson.av_cpm as UnysonCPU
+						, unyson.av_rpm as UnysonRPU
+
+					from (
+							select rtrim(origincity) + ', ' + rtrim(originstate) as opt
+								,rtrim(destinationcity) + ', ' + rtrim(destinationstate) as dpt
+								,left(originzipcode,3) as Ozip3
+								,left(destinationzipcode,3) as dzip3 
+								,sum(Volume) as otr_vol
+								,( sum(convert(float,costmintotal)) / sum(convert(float, Volume)) ) / avg(convert(float, case when mileage = 0 then 1 else mileage end))  as avgCost 
+								,( sum(convert(float,RevenueLineHaulTotal) + convert(float,RevenueFuelTotal)) / sum(convert(float, Volume)) ) / avg(convert(float, case when mileage = 0 then 1 else mileage end)) as avgRevenue 
+
+							from Hubdwdb01.dw2.dbo.OperationalSummary a
+
+							where year(dsrdate) = year(current_timestamp)
+								and not( orderstatus in ('cnl','cwc','dlt') )
+								and a.TransportationMode = 'OTR'
+								and a.TransportationSubMode not in ('PHM','IML','HDT')
+								and (a.LogisticsFlag <> 1
+								or a.OriginDispatchHub in (01,03,04,05,06,07,10,11,12,13,14,15,16,17,20,24,26,29,30,33,48))
+								and Not (a.TransportationSubMode in ('HSF') and a.HighwayVendorNumber = 976)
+								-- and mileage <> 0
+
+							group by  rtrim(origincity) + ', ' + rtrim(originstate)
+								,rtrim(destinationcity) + ', ' + rtrim(destinationstate)
+								,left(originzipcode,3)
+								,left(destinationzipcode,3) ) as highway
+						full join (
+								select RTRIM(Upper(OriginCity)) + ', ' +  RTRIM(Upper(OriginState)) as opt
+									,Left(OriginZip,3) as OriginZip3
+									,RTRIM(Upper(DestinationCity)) + ', ' + RTRIM(Upper(DestinationState)) as dpt
+									,Left(DestinationZip,3) as DestinationZip3
+									,Sum(Distance)/Convert(float,Count(distinct FirstLoadPrimaryReference)) as AvgMileage
+									,Count(distinct FirstLoadPrimaryReference) as Volume
+									,Sum(TotalActualRevenue) as TotalRevenue
+									,Sum(TotalActualRevenue)/Convert(float,Count(distinct FirstLoadPrimaryReference)) as TotalRPU
+									,Sum(TotalCost) as TotalCost
+									,Sum(TotalCost)/Convert(float,Count(distinct FirstLoadPrimaryReference)) as TotalCPU
+									,Sum(TotalActualRevenue)/Convert(float,Count(distinct FirstLoadPrimaryReference)) / case when Sum(Distance)= 0 then 1 else sum(Distance) end / Convert(float,Count(distinct FirstLoadPrimaryReference)) as TotalCPUperM
+									,Sum(TotalActualRevenue)/Convert(float,Count(distinct FirstLoadPrimaryReference)) / case when Sum(Distance)= 0 then 1 else sum(Distance) end / Convert(float,Count(distinct FirstLoadPrimaryReference)) as TotalRPUperM
+
+								from hubdwdb02.dw2_Mode.dbo.vwMove a
+									left join hubdwdb02.dw2_Mode.dbo.dimDate b
+									on a.OriginalInvoiceExtractDate = b.Date_Key
+
+								where b.StandardDate >= '2015-01-01'
+									and CustomerMode = 'Truckload'
+									and CarrierMode = 'Truckload'
+									and LoadCount = 1
+
+								group by RTRIM(Upper(OriginCity)) + ', ' +  RTRIM(Upper(OriginState))
+									,Left(OriginZip,3)
+									,RTRIM(Upper(DestinationCity)) + ', ' + RTRIM(Upper(DestinationState))
+									,Left(DestinationZip,3) ) mode 
+							on (highway.opt=mode.opt and highway.dpt=mode.dpt and highway.ozip3=mode.originzip3 and highway.dzip3=mode.DestinationZip3)
+							full join ( 
+									select 
+										 opt
+										,ozip
+										,dpt	
+										,dzip
+										,sum(miles) / count(load_number) as av_miles
+										,avg(revenue) as av_r 
+										,avg(cost) as av_c
+										,avg(revenuepermile) as av_rpm
+										,avg(costpermile) as av_cpm
+
+									from (	
+											select 
+												 distinct Load_Number
+												,rtrim(carrier_scac) as scac
+												,carrier_address_name as name
+												,RTRIM(city) + ', ' + RTRIM(state) as opt
+												,left(zip_code,3) as ozip
+												,RTRIM(truckloaddestinationcity) + ', ' + RTRIM(truckloadDestinationState) as dpt
+												,left(truckloaddestinationzipcode,3) as dzip
+												,point_point_direct_miles as miles
+												,TMLineHaulRevenueAmountSummed + TMFuelRevenueAmountSummed +ASTMAccessorialRevenueAmountSummed as revenue
+												,tmlinehaulcostamountsummed + tmfuelcostamountsummed + TMAccesssorialCostAmountSummed as cost
+												,(TMLineHaulRevenueAmountSummed + TMFuelRevenueAmountSummed)/point_point_direct_miles as revenuepermile
+												,(tmlinehaulcostamountsummed + tmfuelcostamountsummed)/point_point_direct_miles as costpermile
+												,year(shipped_date) as shipped_year
+												,month(shipped_date) as shipped_month
+												,Transportation_Mode
+												,Service_Code
+
+											from hubdwdb02.dw2_tm.dbo.vwunysonshipmentdataforpricing 
+											  
+											where  year(Shipped_Date) = year(current_timestamp)
+												and Service_Code in ('TL  ', 'TL13', 'TL-S', 'TL  ', '53-P', 'TL-1', '53-S', 'TL  ', 'TL48', 'TL  ', 'TL-1', 'TL  ', 'TL  ', 'TL53', 'TL  ', 'TL13', 'TL-2', 'CM53', 'TL-2', 'TL-3', 'TL12', '53CH', 'TL28', '53CH')
+												and Shipment_Service_Code in ('TL  ', 'TL-S', 'TL-1', '53-P', '53-S', '53IM', 'TL13', 'TL-2', 'TL-3', 'TL12')
+												and Transportation_Mode in ('OTR') 
+												and Carrier_SCAC not in ('HWYY','HHWY')
+
+										    ) t
+								group by 
+									 opt
+									,ozip
+									,dpt	
+									,dzip ) unyson
+								on (highway.opt=unyson.opt and mode.opt=unyson.opt and highway.dpt=unyson.dpt and mode.dpt=unyson.dpt and highway.ozip3=unyson.ozip and mode.originzip3 = unyson.ozip and highway.dzip3=unyson.dzip and mode.DestinationZip3 = unyson.dzip)
+
+					where coalesce(highway.opt, mode.opt, unyson.opt) <> ''
+						AND coalesce(highway.dpt, mode.dpt, mode.dpt) <> ''
+						AND coalesce(highway.ozip3, mode.originzip3, unyson.ozip) <> ''
+						AND coalesce(highway.dzip3, mode.destinationzip3, unyson.dzip) <> ''
+					"))
+
+# HGT Lanes
+##################################################################
+hgt <- data.table(readWorksheetFromFile("HDT2015.xlsx", 2))
+setnames(hgt, names(hgt), tolower(names(hgt)))
+
+hgt <- hgt[,list(custname,custnbr,
+			opt = paste(ocity,ost,sep=', '),
+			ozip3 = substr(ozip,1,3),
+			dpt = paste(dcity,dst,sep=', '),
+			dzip3 = substr(dzip,1,3),
+			vol, avgmi, rev, ben )]
+
+
+# Transcore Lanes 
+##################################################################
+transcore <- data.table(readWorksheetFromFile("transcore.xlsx", 1))
+setnames(transcore, names(transcore), tolower(names(transcore)))
+
+tspot <- transcore[is.na(exclude.spot)]
+tcont <- transcore[is.na(exclude.contract)]
+
+tspot <- tspot[,list(ozip3 = orig.postal.code, 
+				dzip3 = dest.postal.code, 
+				miles = pc.miler.practical.mileage, 
+				lospot = spot.low.linehaul.rate, 
+				avgspot = spot.avg.linehaul.rate, 
+				hispot = spot.high.linehaul.rate,
+				fuelspot = spot.fuel.surcharge)]  
+
+tspot[,list(lospot = ifelse((lospot/miles)>10,lospot+fuelspot*miles,(lospot/miles)+fuelspot),
+			avgspot = ifelse((avgspot/miles)>10,avgspot+fuelspot*miles,(avgspot/miles)+fuelspot),
+			hispot = ifelse((hispot/miles)>10,hispot+fuelspot*miles,(hispot/miles)+fuelspot)+fuelspot*miles)]
+
+tcont <- tcont[,list(ozip3 = orig.postal.code, 
+				 dzip3 = dest.postal.code, 
+				 miles = pc.miler.practical.mileage,
+				 locont = contract.low.linehaul.rate, 
+				 avgcont = contract.avg.linehaul.rate, 
+				 hicont = contract.high.linehaul.rate, 
+				 fuelcont = contract.fuel.surcharge)]
+
+tcont[,list(locont = ifelse((locont/miles)>10,locont+fuelcont*miles,(locont/miles)+fuelcont),
+			avgcont = ifelse((avgcont/miles)>10,avgcont+fuelcont*miles,(avgcont/miles)+fuelcont),
+			hicont = ifelse((hicont/miles)>10,hicont+fuelcont*miles,(hicont/miles)+fuelcont))]
+
+
+# Aggregation
+##################################################################
+
+# HMU
+
+pp.hmu <- hmu[,list(pp.hwycpu = mean(HighwayCPU,na.rm=T),
+					pp.hwyrpu = mean(HighwayRPU,na.rm=T),
+					pp.modecpu = mean(ModeCPU,na.rm=T),
+					pp.moderpu = mean(ModeRPU,na.rm=T),
+					pp.unycpu = mean(UnysonCPU,na.rm=T),
+					pp.unyrpu = mean(UnysonRPU,na.rm=T)), 
+				by=list(opt = OriginPoint, ozip3 = OrizinZip3, dpt = DestPoint, dzip3 = DestZip3)]
+
+
+zp.hmu <- hmu[,list(zp.hwycpu = mean(HighwayCPU,na.rm=T),
+					zp.hwyrpu = mean(HighwayRPU,na.rm=T),
+					zp.modecpu = mean(ModeCPU,na.rm=T),
+					zp.moderpu = mean(ModeRPU,na.rm=T),
+					zp.unycpu = mean(UnysonCPU,na.rm=T),
+					zp.unyrpu = mean(UnysonRPU,na.rm=T)), 
+				by=list(ozip3 = OrizinZip3, dpt = DestPoint, dzip3 = DestZip3)]
+
+
+pz.hmu <- hmu[,list(pz.hwycpu = mean(HighwayCPU,na.rm=T),
+					pz.hwyrpu = mean(HighwayRPU,na.rm=T),
+					pz.modecpu = mean(ModeCPU,na.rm=T),
+					pz.moderpu = mean(ModeRPU,na.rm=T),
+					pz.unycpu = mean(UnysonCPU,na.rm=T),
+					pz.unyrpu = mean(UnysonRPU,na.rm=T)), 
+				by=list(opt = OriginPoint, ozip3 = OrizinZip3, dzip3 = DestZip3)]
+
+
+zz.hmu <- hmu[,list(zz.hwycpu = mean(HighwayCPU,na.rm=T),
+					zz.hwyrpu = mean(HighwayRPU,na.rm=T),
+					zz.modecpu = mean(ModeCPU,na.rm=T),
+					zz.moderpu = mean(ModeRPU,na.rm=T),
+					zz.unycpu = mean(UnysonCPU,na.rm=T),
+					zz.unyrpu = mean(UnysonRPU,na.rm=T)), 
+				by=list(ozip3 = OrizinZip3, dzip3 = DestZip3)]
+
+
+# Joins
+##################################################################
+
+j3 <- hgt 
+j3$pp.hwycpu  <- pp.hmu$pp.hwycpu[match(paste(j3$opt,j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+j3$pp.hwyrpu  <- pp.hmu$pp.hwyrpu[match(paste(j3$opt,j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+j3$pp.modecpu <- pp.hmu$pp.modecpu[match(paste(j3$opt,j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+j3$pp.moderpu <- pp.hmu$pp.moderpu[match(paste(j3$opt,j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+j3$pp.unycpu  <- pp.hmu$pp.unycpu[match(paste(j3$opt,j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+j3$pp.unyrpu  <- pp.hmu$pp.unyrpu[match(paste(j3$opt,j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+nrow(j3[is.na(dzip3) | is.na(ozip3)])
+
+j3$zp.hwycpu  <- zp.hmu$zp.hwycpu[match(paste(j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+j3$zp.hwyrpu  <- zp.hmu$zp.hwyrpu[match(paste(j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+j3$zp.modecpu <- zp.hmu$zp.modecpu[match(paste(j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+j3$zp.moderpu <- zp.hmu$zp.moderpu[match(paste(j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+j3$zp.unycpu  <- zp.hmu$zp.unycpu[match(paste(j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+j3$zp.unyrpu  <- zp.hmu$zp.unyrpu[match(paste(j3$ozip3,j3$dpt,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dpt,pp.hmu$dzip3))]
+nrow(j3[is.na(dzip3) | is.na(ozip3)])
+
+j3$pz.hwycpu  <- pz.hmu$pz.hwycpu[match(paste(j3$opt,j3$ozip3,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dzip3))]
+j3$pz.hwyrpu  <- pz.hmu$pz.hwyrpu[match(paste(j3$opt,j3$ozip3,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dzip3))]
+j3$pz.modecpu <- pz.hmu$pz.modecpu[match(paste(j3$opt,j3$ozip3,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dzip3))]
+j3$pz.moderpu <- pz.hmu$pz.moderpu[match(paste(j3$opt,j3$ozip3,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dzip3))]
+j3$pz.unycpu  <- pz.hmu$pz.unycpu[match(paste(j3$opt,j3$ozip3,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dzip3))]
+j3$pz.unyrpu  <- pz.hmu$pz.unyrpu[match(paste(j3$opt,j3$ozip3,j3$dzip3),paste(pp.hmu$opt,pp.hmu$ozip3,pp.hmu$dzip3))]
+nrow(j3[is.na(dzip3) | is.na(ozip3)])
+
+j3$zz.hwycpu  <- zz.hmu$zz.hwycpu[match(paste(j3$ozip3,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dzip3))]
+j3$zz.hwyrpu  <- zz.hmu$zz.hwyrpu[match(paste(j3$ozip3,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dzip3))]
+j3$zz.modecpu <- zz.hmu$zz.modecpu[match(paste(j3$ozip3,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dzip3))]
+j3$zz.moderpu <- zz.hmu$zz.moderpu[match(paste(j3$ozip3,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dzip3))]
+j3$zz.unycpu  <- zz.hmu$zz.unycpu[match(paste(j3$ozip3,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dzip3))]
+j3$zz.unyrpu  <- zz.hmu$zz.unyrpu[match(paste(j3$ozip3,j3$dzip3),paste(pp.hmu$ozip3,pp.hmu$dzip3))]
+nrow(j3[is.na(dzip3) | is.na(ozip3)])
+
+j3$milescont<- tcont$miles[match(paste(j3$ozip3,j3$dzip3), paste(tcont$ozip3,tcont$dzip3))]
+j3$locont   <- tcont$locont[match(paste(j3$ozip3,j3$dzip3), paste(tcont$ozip3,tcont$dzip3))]
+j3$avgcont  <- tcont$avgcont[match(paste(j3$ozip3,j3$dzip3), paste(tcont$ozip3,tcont$dzip3))]
+j3$hicont   <- tcont$hicont[match(paste(j3$ozip3,j3$dzip3), paste(tcont$ozip3,tcont$dzip3))]
+j3$fuelcont <- tcont$fuelcont[match(paste(j3$ozip3,j3$dzip3), paste(tcont$ozip3,tcont$dzip3))]
+
+j3$milescont<- tspot$miles[match(paste(j3$ozip3,j3$dzip3), paste(tspot$ozip3,tspot$dzip3))]
+j3$lospot   <- tspot$lospot[match(paste(j3$ozip3,j3$dzip3), paste(tspot$ozip3,tspot$dzip3))]
+j3$avgspot  <- tspot$avgspot[match(paste(j3$ozip3,j3$dzip3), paste(tspot$ozip3,tspot$dzip3))]
+j3$hispot   <- tspot$hispot[match(paste(j3$ozip3,j3$dzip3), paste(tspot$ozip3,tspot$dzip3))]
+j3$fuelspot <- tspot$fuelspot[match(paste(j3$ozip3,j3$dzip3), paste(tspot$ozip3,tspot$dzip3))]
+
+writeWorksheetToFile("j3.xlsx",j3,"j3")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # Joins
+# ##################################################################
+
+
+# # k1 <- hgt[match(hgt[list(opt,ozip3,dpt,dzip3)],pp.hmu[list(opt,ozip3,dpt,dzip3)]),list(
+# # 			pp.hwycpu	= pp.hmu[,zz.hwycpu],
+# # 			pp.hwyrpu	= pp.hmu[,zz.hwyrpu],
+# # 			pp.modecpu	= pp.hmu[,zz.modecpu],
+# # 			pp.moderpu	= pp.hmu[,zz.moderpu],
+# # 			pp.unycpu	= pp.hmu[,zz.unycpu],
+# # 			pp.unyrpu	= pp.hmu[,zz.unyrpu])]
+
+
+# rm(j1);rm(j2);rm(j3)
+# setkey(hgt   ,opt,ozip3,dpt,dzip3)
+# setkey(pp.hmu,opt,ozip3,dpt,dzip3)
+# j1 <- pp.hmu[hgt]
+# nrow(j1[is.na(dzip3) | is.na(ozip3)])
+# # j2 <- merge(hgt,pp.hmu,by=c("opt","ozip3","dpt","dzip3"), all.x=T)
+# # nrow(j2[is.na(dzip3) | is.na(ozip3)])
+
+# setkey(j1,ozip3,dpt,dzip3)
+# setkey(zp.hmu, ozip3,dpt,dzip3)
+# j1 <- zp.hmu[j1]
+# nrow(j1[is.na(dzip3) | is.na(ozip3)])
+
+# setkey(j1,opt,ozip3,dzip3)
+# setkey(pz.hmu, opt, ozip3, dzip3)
+# j1 <- pz.hmu[j1]
+# nrow(j1[is.na(dzip3) | is.na(ozip3)])
+
+# setkey(j1,ozip3,dzip3)
+# setkey(zz.hmu, ozip3, dzip3)
+# j1 <- zz.hmu[j1]
+# nrow(j1[is.na(dzip3) | is.na(ozip3)])
+
+# setkey(tspot,ozip3,dzip3)
+# setkey(j1,ozip3,dzip3)
+# j1 <- tspot[j1]
+# nrow(j1[is.na(dzip3) | is.na(ozip3)])
+
+# setkey(tcont,ozip3,dzip3)
+# setkey(j1,ozip3,dzip3)
+# j1 <- tcont[j1]
+# nrow(j1[is.na(dzip3) | is.na(ozip3)])
+
+# writeWorksheetToFile("j1.xlsx",j1,"j1")
+
+# # str(j1)
+
+# # hgt[ozip3=="604" & dzip3=="604"]
+# # j1[ozip3=="604" & dzip3=="604"]
+
+# # nrow(hgt);nrow(j1)
+
+# # zz.hmu[ozip3=="604" & dzip3=="604"]
+
+# # HGT lanes base table
+# ##################################################################
+# base <- data.table(readWorksheetFromFile("compsasvalues.xlsx", 1))
+# setnames(base, names(base), tolower(names(base)))
+# setnames(base,"customername","custname")
+# setnames(base,"cystomernumber","custnumber")
+
+# base[,cpuhwy := as.numeric(cpuhwy)]
+# base[,rpuhwy := as.numeric(rpuhwy)]
+# base[,cpumode := as.numeric(cpumode)]
+# base[,rpumode := as.numeric(rpumode)]
+# base[,cpuunyson := as.numeric(cpuunyson)]
+# base[,rpuunyson := as.numeric(rpuunyson)]
+# base[,contractlowtranscore := as.numeric(contractlowtranscore)]
+# base[,contractavgtranscore := as.numeric(contractavgtranscore)]
+# base[,contracthightranscore := as.numeric(contracthightranscore)]
+# base[,spotlowtranscore := as.numeric(spotlowtranscore)]
+# base[,spotavgtranscore := as.numeric(spotavgtranscore)]
+# base[,spothightranscore := as.numeric(spothightranscore)]
+# base[,col27 := as.numeric(col27)]
+
+# # point to point
+# ##################################################################
+# p2p <- base[,list(
+# 				ocity, ostate, ozip3, dcity, dstate, dzip3, 
+# 				vol = mean(vol),
+# 				avgmiles = weighted.mean(avgmiles,vol,na.rm=T),
+# 				rev = weighted.mean(rev,vol),na.rm=T, 
+# 				benefit = weighted.mean(benefit,vol,na.rm=T),
+# 				cpuhwy = weighted.mean(cpuhwy,vol,na.rm=T),
+# 				rpuhwy = weighted.mean(rpuhwy,vol,na.rm=T),
+# 				cpumode = weighted.mean(cpumode,vol,na.rm=T),
+# 				rpumode = weighted.mean(rpumode,vol),na.rm=T, 
+# 				cpuunyson = weighted.mean(cpuunyson,vol),na.rm=T, 
+# 				rpuunyson = weighted.mean(rpuunyson,vol,na.rm=T),
+# 				contractlowtranscore = weighted.mean(contractlowtranscore,vol),na.rm=T, 
+# 				contractavgtranscore = weighted.mean(contractavgtranscore,vol),na.rm=T, 
+# 				contracthightranscore = weighted.mean(contracthightranscore,vol,na.rm=T),
+# 				spotlowtranscore = weighted.mean(spotlowtranscore,vol,na.rm=T),
+# 				spotavgtranscore = weighted.mean(spotavgtranscore,vol,na.rm=T),
+# 				spothightranscore = weighted.mean(spothightranscore,vol,na.rm=T) 
+# 			), by=list(ocity, ostate, ozip3, dcity, dstate, dzip3)]
+
+
+# # zip to point
+# ##################################################################
+# z2p <- base[,.(ozip3,Dzip3)]
+
+
+# # point to zip
+# ##################################################################
+
+
+# # zip to zip
+# ##################################################################
+
+
+
+
+

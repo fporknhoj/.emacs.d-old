@@ -1,0 +1,459 @@
+*********************************************************************;
+* read csv files as datasets
+*********************************************************************;
+
+*Forecast Corridors;
+/*
+proc sql;
+connect to odbc as dw2 (datasrc='dw2');
+
+create table hublib.fcstods as
+select * from connection to dw2 (
+declare @stdt date = '30may2014'
+select distinct ltrim(rtrim([a].OriginRampSubMarket)) as fcstorig
+,ltrim(rtrim([a].DestinationRampSubMarket)) as fcstdest
+from [dbo].[OperationalSummary] [a]
+where [a].DSRDate > @stdt
+	and [a].[OriginRampMarket] <> ''
+	and [a].[DestinationRampMarket] <> ''
+	and [a].[loadnumber] is not null
+	and [a].[EquipmentLength]=53
+	and [a].[EquipmentType]='CN'
+	and [a].[TransportationMode]='IML'
+	and [a].[origincountrycode]='usa'
+	and [a].[destinationcountrycode]='usa'
+	and [a].[loadnumber] is not NULL
+	and [a].[sellinghub] not in ('02','34','35','52','53','54','55')
+	and [a].[multistopcode] in ('n','')
+	and [a].[HazardousMaterialFlag] <> 'y'
+	and [a].[orderstatus] not in ('cwc','cnl','dlt')
+	and [a].[servicetype] in ('dd')
+	and [a].[EquipmentCategory] in ('domestic','trailers')
+	and [a].OriginRampMarket+[a].DestinationRampMarket in (
+		select [a].OriginRampMarket + [a].DestinationRampMarket as mkt
+		from [dbo].[OperationalSummary] [a]
+		where [a].DSRDate > @stdt
+			and [a].[OriginRampMarket] <> ''
+			and [a].[DestinationRampMarket] <> ''
+			and [a].[loadnumber] is not null
+			and [a].[EquipmentLength]=53
+			and [a].[EquipmentType]='CN'
+			and [a].[TransportationMode]='IML'
+			and [a].[origincountrycode]='usa'
+			and [a].[destinationcountrycode]='usa'
+			and [a].[loadnumber] is not NULL
+			and [a].[sellinghub] not in ('02','34','35','52','53','54','55')
+			and [a].[multistopcode] in ('n','')
+			and [a].[HazardousMaterialFlag] <> 'y'
+			and [a].[orderstatus] not in ('cwc','cnl','dlt')
+			and [a].[servicetype] in ('dd')
+			and [a].[EquipmentCategory] in ('domestic','trailers')
+		group by [a].OriginRampMarket, [a].DestinationRampMarket
+		having sum([a].volume) / DATEDIFF(MONTH,@stdt,GETDATE()) > 59 )
+		and [a].OriginRampSubMarket <> ''
+		and [a].DestinationRampSubMarket <> ''
+		order by fcstorig ,fcstdest
+);
+disconnect from dw2;
+quit;
+*/
+data hublib.fcstods;
+%let _EFIERR_=0;
+infile 'c:\sasmodel\csvs\fcstods.csv' delimiter = ',' missover dsd lrecl=32767 firstobs=2;
+input fcstorig :$5. fcstdest :$5.;
+if _ERROR_ then call symputx('_EFIERR_',1);
+fcstod = 1;
+run;
+
+proc sort DATA=hublib.fcstods;
+by fcstorig fcstdest;
+run;
+
+
+*Pool;
+
+data hublib.pool;
+infile 'c:\sasmodel\csvs\pool.csv' dlm=',' missover dsd lrecl=32767 firstobs=2;
+input Oramp :$5. Ostate :$2. Ocity :$50. Customer :$50. Custnum Pool :$3.;
+run;
+
+title "pool";
+
+*Holidays;
+
+data hublib.holidays;
+retain fcstdt holiday desc;
+infile 'c:\sasmodel\csvs\holidays.csv' dlm=',' lrecl=32767 firstobs=2 missover;
+input holiday : mmddyy10. desc : $31.;
+fcstdt = holiday;
+format holiday date9. fcstdt date9.;
+run;
+
+proc sort data=hublib.holidays;
+by fcstdt holiday;
+run;
+
+*data hublib.holidays;
+*infile 'c:\sasmodel\csvs\holidays.csv' dlm=',' missover dsd lrecl=32767 firstobs=2;
+*input fcstdt :mmddyy8. holiday :$50.;
+*run;
+
+*data HUBLIB.holidays;
+*set HUBLIB.holidays;
+*fcstdt = holiday;
+*run;
+
+*Autoaccept ;
+
+data hublib.autoaccept;
+    infile 'c:\sasmodel\csvs\autoaccept.csv' dlm=',' missover dsd lrecl=32767 firstobs=2;
+    input Oramp :$5. Ostate :$3. Ocity :$50. Customer :$50. Custnum Accept :$1.;
+    run;
+
+data hublib.autoaccept;
+    set hublib.autoaccept;
+    autoaccept = 1;
+    run;
+
+* HUBU;
+
+data hublib.hubu;
+    infile 'c:\sasmodel\csvs\hubu.csv' dlm=',' missover dsd lrecl=32767 firstobs=2;
+    input Custnum	Customer :$50. Oramp :$5. Dramp :$5. Service :$1.;
+    run;
+
+* Out of network equipment ;
+
+data hublib.outnetworkequipment;
+    infile 'c:\sasmodel\csvs\outnetworkequipment.csv' dlm=',' missover dsd lrecl=32767 firstobs=2;
+    input fcstdest :$5. eqprov :$4. outbox :$1.;
+    run;
+
+*********************************************************************;
+* clean data and construct datasets for forecasting
+********************************************************************;
+
+	************************************************;
+    * trim and rename
+    ************************************************;
+
+data work.alldataplus  (rename=(TempVar=custnum)drop=custnum);
+    set hublib.alldata;
+    TempVar          = put(custnum, 9.);
+    custnum          = TRIMN(left(custnum));
+    hubuonlykey      = TRIM(origrampmkt)  || TRIM(destrampmkt)  || TRIMN(left((custnum)));
+    aakey            = TRIMN(origrampmkt) || TRIMN(origcity)    || TRIMN(origstate) || TRIMN(left(custnum));
+    ostatekey        = TRIM(origrampmkt)  || TRIM(origstate);
+    dstatekey        = TRIM(destrampmkt)  || TRIM(deststate);
+    ocitykey         = TRIM(origrampmkt)  || TRIM(origcity) || TRIM(origstate) ;
+    dcitykey         = TRIM(destrampmkt)  || TRIM(destcity) || TRIM(deststate) ;
+    * Default fcstdest is the ramp market;
+    fcstdest         = destrampmkt;
+    fcstorig         = origrampmkt;
+	run;
+
+    ************************************************;
+	* add more variables to file
+    ************************************************;
+
+data hublib.alldataplusall;
+    set work.alldataplus;
+    if loads=1;
+    if eqlen >= 48;
+    fcstdt = datepart(loaddt);
+    format fcstdt date9.;
+    if (eqprov = "HUBU" or eqprov = "HUNU" or eqprov = "UPHU" or eqprov='NHUU' or eqprov = 'NHWU' or eqprov = 'HGIU')
+    then fleetmove = 1; else fleetmove = 0;
+
+    fcstorig = origrampsubmkt;
+    fcstdest = destrampsubmkt;
+
+	* fcstorig = origrampmkt;
+    * fcstdest = destrampmkt;
+
+    if fcstorig ~= "";
+	run;
+
+    ************************************************;
+    * split out REPO records and non-REPO records
+    * Repo records used in supply , not demand forecast
+    ************************************************;
+
+data hublib.alldataplus;
+    set hublib.alldataplusall;
+        if tranmode ~= "RPO";
+	run;
+
+data hublib.repo;
+    set hublib.alldataplusall;
+        if tranmode = "RPO";
+	run;
+
+    ************************************************;
+    * build datasets for forecasting
+    ************************************************;
+
+data inorigs;
+    set hublib.fcstods;
+    by fcstorig;
+    if first.fcstorig;
+    inorig = 1;
+    drop fcstod;
+	run;
+
+data alldataplus;
+	set hublib.alldataplus;
+    if fcstdt >= &today - &histrange and
+    fcstdt <= &today - &fcstoffset - 1;
+	run;
+
+/*
+proc sort data=work.alldataplus;
+	by fcstdt;
+data work.a
+	set work.alldataplus;
+	by fcstdt;
+	if first.fcstdt then sumloads=0;
+		sumloads + 1;
+	if last.fsctdt then output;
+	run;
+proc plot data=work.a;
+	plot sumloads * fcstdt;
+	run;
+proc datasets library=work;
+	delete a;
+	run;
+*/
+
+proc sort data = alldataplus;
+    by fcstorig;
+	run;
+
+data hublib.majororig hublib.minororig;
+	merge alldataplus inorigs;
+	by fcstorig;
+	if inorig = 1 then output hublib.majororig ;
+	else do; majmktflag=-1; output hublib.minororig;
+	end;
+	run;
+
+*proc freq data=alldataplus;
+*    tables fcstdest;
+*	run;
+
+*proc freq data=hublib.minororig;
+*    tables fcstorig;
+*    tables fcstdest;
+	*endNOPNew;
+*	run;
+
+proc sort data=hublib.majororig;
+ 	by  fcstorig fcstdest LoadDt;
+	run;
+
+	***Diagnostics;
+
+*proc freq data=hublib.majororig;  title "all Major orig" ;
+*    tables fcstorig*fcstdest /out=majods ;
+*	run;
+
+	************************************************;
+	* this is where we define the forecast groups
+    * destinations that are "big enough"
+	* based on presence in fcstods.csv file;
+	************************************************;
+proc sort data=hublib.majororig;
+    by  fcstorig fcstdest fcstdt;
+	run;
+
+	************************************************;
+     * each record in the raw data is a load: this means
+     * counts records by orig ram mkt and dest rampmkt.
+     * if the count _n_, is large enough, the OD is included as
+     * a large od, otherwise, grouped into ZZOTHER
+	************************************************;
+proc means data = hublib.majororig noprint;
+ 	by fcstorig fcstdest fcstdt;
+ 	output out=work.majororigsum;
+ 	var loads;
+	run;
+
+*proc print data=majororigsum;
+*	run;
+
+	************************************************;
+    * this captures the number of days with loads ;
+	************************************************;
+data work.majororigsum2;
+    set work.majororigsum;
+    by fcstorig fcstdest fcstdt;
+    if _stat_ = "N";
+        drop _freq_ _type_;
+	run;
+
+	************************************************;
+    * count dates with loads ;
+	************************************************;
+proc means data = work.majororigsum2 noprint;
+	title "look at loads/day or total loads instead of n";
+    by fcstorig fcstdest ;
+    output out=work.majororigsum3;
+    var loads;
+	run;
+
+data work.majororigsum4;
+    set work.majororigsum3;
+    by fcstorig fcstdest ;
+    if _stat_ = "N";
+    loaddays = loads;
+    drop _freq_ _type_ loads;
+	run;
+
+proc sort data = work.MAJORorigsum4;
+    by fcstorig fcstdest;
+	run;
+
+title "count of dates with loads";
+	run;
+
+    ************************************************;
+    * Fill in missing dates -- no obs implies zero loads for that date ;
+    * Also, make sure we have an entry for starthistory and end history ;
+    * so that when we fill in missing data, we fill in zeroes at beginning and end ;
+	************************************************;
+
+    * forcast by group selection! ;
+    * fcstods.csv contains list of OD's that are forecasted ;
+proc sort data=hublib.majororig;
+    by fcstorig fcstdest;
+	run;
+
+data hublib.majororigfcstdata;
+    merge hublib.majororig hublib.fcstods;
+    by fcstorig fcstdest;
+    * merge with fcstods, set forecastflag = 1 if match;
+    if fcstod = . then majmktflag=0; else majmktflag=1;
+	run;
+
+*proc freq data=hublib.majororigfcstdata;
+*	title 'fcstdest majorminor od major orig';
+*    tables fcstdest;
+*    tables majmktflag;
+*	run;
+
+	************************************************;
+    * Get supply dest before resetting fcstdest to zzother!! ;
+	************************************************;
+data hublib.minorodsupplydata;  title 'fcstdest minor';
+    set hublib.majororigfcstdata;
+    if majmktflag = 0 ;
+	run;
+
+*proc freq data=hublib.minorodsupplydata;  title 'fcstdest minor od only ';
+*    tables fcstdest;
+*	run;
+
+data hublib.majororigfcstdata;
+    set hublib.majororigfcstdata;
+    if majmktflag = 0 then fcstdest = 'ZZOTH';
+	run;
+
+*proc freq data=hublib.majororigfcstdata;
+*	title 'fcstdest all od from major - aftor zzother';
+*	tables fcstdest;
+*	tables majmktflag;
+*	run;
+
+	************************************************;
+    * preserve this data, including fcstramp market names ;
+	************************************************;
+proc sort data=hublib.majororigfcstdata;
+    by fcstorig origrampmkt fcstdest destrampmkt ;
+	run;
+
+data hublib.rmpmktfcstmktgroups;
+    set hublib.majororigfcstdata;
+    by fcstorig origrampmkt fcstdest destrampmkt ;
+    if first.origrampmkt or first.destrampmkt or first.fcstorig or first.fcstdest then
+        output;
+    keep fcstorig fcstdest origrampmkt destrampmkt majmktflag;
+	run;
+
+* proc print data=hublib.rmpmktfcstmktgroups;
+
+title "Here are the OD's in NOP Forecat";
+    run;
+
+proc sort data = hublib.majororigfcstdata;
+    by fcstorig fcstdest fcstdt;
+	run;
+
+proc univariate data=hublib.majororigfcstdata noprint;
+    by fcstorig fcstdest  fcstdt;
+    var loads;
+    output out=work.majororigsum2pt5 n=count;
+	run;
+
+data work.majororigsumbracket;
+    set work.majororigsum2pt5;
+    by fcstorig fcstdest fcstdt;
+    if first.fcstorig or first.fcstdest then
+    do
+        count = 0; fcstdt= &today - &histrange ; output;
+        put fcstorig fcstdest fcstdt COUNT;
+    end;
+    if last.fcstorig or last.fcstdest then
+    do
+        count = 0; fcstdt= &today - &fcstoffset -1 ; output;
+        put fcstorig fcstdest fcstdt COUNT;
+    end;
+	run;
+
+data work.majororigsumfull;
+    merge work.majororigsumbracket work.majororigsum2pt5 ;
+    by fcstorig fcstdest fcstdt;
+	run;
+
+proc sort data=work.majororigsumfull;
+    by descending fcstdt;
+	run;
+
+proc sort data=work.majororigsumfull;
+    by fcstdt;
+	run;
+
+proc sort data=work.majororigsumfull;
+    by FCSTORIG FCSTDEST fcstdt;
+	run;
+
+proc expand data=work.majororigsumfull out=sumzero method=none; *to=day method=none;
+    by fcstorig fcstdest ;
+    id fcstdt;
+	run;
+
+    ***************************************************;
+    * save the final data set on which fcst was based
+    * to a permanent SAS data set
+    ***************************************************;
+proc expand data=sumzero out= hublib.majorfcstsummary method=none;
+    by fcstorig fcstdest;
+    id fcstdt;
+    convert count / transformout=(setmiss 0);
+	run;
+
+data hublib.majorfcstsummary ;
+    set hublib.majorfcstsummary ;
+    label count ="loads";
+	run;
+
+proc sort data = hublib.majorfcstsummary ;
+    by fcstorig;
+run;
+
+/*proc means data = hublib.majorfcstsummary sum n noprint;
+    title "means of count after expand";
+    by fcstorig;
+    output out=sumloadcnt;
+    var count;
+	run;
+*/

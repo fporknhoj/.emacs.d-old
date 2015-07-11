@@ -1,0 +1,389 @@
+??*
+options compress=yes reuse=yes;
+
+
+/*First thing that needs to be done is to calculate turn times and transit times.*/
+/*Once this is complete, then we need to get a list of loaded containers and do the date math*/
+/*Next, we need a list of AD containers. When we have this, we stack the LD and AD lists...*/
+/*And we add turntimes to it */
+
+/*proc datasets lib=work noprint;*/
+/*	delete intransit isnotify current current2;*/
+/*run;*/
+
+proc printto;run;
+
+/* ************************************************************************** */
+/* Create turn and transit times */
+/* ************************************************************************** */
+
+/* begin by getting clean data set */
+data timeturntransit;
+	set hublib.alldataplus;
+	if ArrDellocDt ne .;
+	if NotifyDt ne .;
+	if LoadDt ne .;
+run;
+/* convert relevant datetimes to dates */
+data timeturntransit;
+	set timeturntransit;
+	*fucking datetimes ;
+	DateAvail = datepart(ArrDelLocDt) ;
+	DateLoaded = datepart(LoadDt) ;
+	DateNotify = datepart(NotifyDt);
+	DowNotify = weekday(datepart(NotifyDt));
+run;
+/* do date math between notify to complete unloading (turn) and laod to notify (transit) */
+data timeturntransit;
+	set timeturntransit;
+	*Date Math;
+	nt_cu = datdif(datepart(NotifyDt) ,datepart(ArrDellocDt) ,'act/act') ;
+	ld_nt = datdif(datepart(LoadDt) ,datepart(NotifyDt) ,'act/act') ;
+run;
+/* format dataset and drop unneeded variables */
+data timeturntransit;
+	set timeturntransit;
+	if nt_cu lt 0 then ntad = 0 ;
+	format DateAvail date9. DateLoaded date9. DateNotify date9. DowNotify 1.0 ;
+	keep fcstorig fcstdest DateAvail DateLoaded DateNotify DowNotify nt_cu ld_nt;
+run;
+
+/* ************************************************************************** */
+/* get median transit days */
+/* ************************************************************************** */
+
+/* get median transit days for each orig/dest */
+proc sort data=timeturntransit;
+	by fcstorig fcstdest;
+run;
+proc univariate data=timeturntransit noprint ;
+	by fcstorig fcstdest;
+	var ld_nt;
+	output out=ld_nt_time median=transitdays;
+run;
+
+/* get median transit days for orphan orig/dest */
+proc univariate data=timeturntransit noprint;
+	var ld_nt;
+	output out=asdf median=transitdays;
+run;
+proc sql noprint;
+	select transitdays
+	into :medtransit
+	from asdf;
+	drop table asdf;
+quit; /*%put(&medtransit);*/
+
+/* Get median turn days for each orig/dest */
+proc sort data=timeturntransit;
+	by fcstorig fcstdest DowNotify;
+
+proc univariate data=timeturntransit noprint; 
+	by fcstorig fcstdest DowNotify;
+	var nt_cu;
+	output out=nt_cu_time median=turndays;
+run;
+
+/* Get median turn days for orphans orig/dest */
+proc sort data=timeturntransit;
+	by DowNotify;
+
+proc univariate data=timeturntransit noprint; 
+	by DowNotify;
+	var nt_cu;
+	output out=nt_cu_time_all median=turndaysorphan;
+run;
+
+/* ************************************************************************** */
+/* Get containers in transit */
+/* ************************************************************************** */
+
+/* Take orders which have last status of 'loaded' */
+data intransit;
+	set alldataplus;
+	*subset;
+	if lastdtdef eq 'LD';
+	set intransit;
+	*set date;
+	lastdate = datepart(lastdt);
+	*format;
+	format lastdate date9. ;
+	*keep vars;
+	keep ordnum lastdtdef lastdate fcstorig fcstdest;
+run;
+
+/* Merge with transit times */
+proc sort data=intransit;
+	by fcstorig fcstdest;
+proc sort data=ld_nt_time;
+	by fcstorig fcstdest;
+data intransit;
+	merge intransit ld_nt_time;
+	by fcstorig fcstdest;
+	if ordnum ne .;
+run;
+
+/* Make Adjustments */
+data intransit;
+	set intransit;
+	/* Set missing transit times to global median */
+ 	if transitdays eq . then transitdays = &medtransit;
+	/* Do Date Math */
+	ndt = intnx('day' , lastdate , transitdays );
+	format ndt date9. ;
+	/* Add Dow for Date of Notification */
+	DowNotify = weekday(ndt);
+run;
+
+/* ************************************************************************** */
+/* Get containers that have arrived... */
+data isnotify;
+	set alldataplus;
+	*subset;
+	if lastdtdef in ('ET','AD');
+	*set date;
+	lastdate = datepart(lastdt);
+	put lastdate;
+	*create ndt;
+	ndt = datepart(lastdt);
+	*create dow;
+	DowNotify = weekday(lastdate);
+	*format;
+	format lastdate date9. ndt date9. DowNotify 1.0;
+	*keep vars;
+	keep ordnum lastdtdef lastdate ndt DowNotify fcstorig fcstdest;
+	*debug;
+	put ndt;
+run;
+
+/* ...and combine with containers in transit */
+data currentord;
+	set intransit isnotify;
+run;
+
+/* merge with turn time first by orig/dest then all median */
+proc sort data=currentord;
+	by fcstorig fcstdest DowNotify;
+
+proc sort data=nt_cu_time;
+	by fcstorig fcstdest DowNotify;
+
+data currentord;
+	merge current nt_cu_time;
+	by fcstorig fcstdest DowNotify;
+	if ordnum ne .;
+run;
+
+proc sort data=currentord;
+	by DowNotify;
+
+proc sort data=nt_cu_time_all;
+	by DowNotify;
+
+data currentord;
+	merge currentord nt_cu_time_all;
+	by DowNotify;
+	*remove if not ordnum;
+	if ordnum ne .;
+	* replace empty turn days;
+	if turndays eq . then turndays = turndaysorphan;
+/* do date math !! */
+	enddate = intnx('day' , ndt , turndays);
+	format ndt date9. enddate date9. ;
+	if fcstdest ne '';
+run;
+
+/* debug; nothing should show up from this */
+proc print data=currentord;
+	where enddate eq .;
+run;
+
+/* create final table that has count of loads ready for DEL by orig/dest pair */
+proc datasets lib=work;
+	delete currentsum1;
+run;
+
+proc sort data=currentord;
+	by fcstorig fcstdest enddate;
+
+proc means data=currentord noprint;
+	by fcstorig fcstdest enddate;
+	var ordnum;
+	output out=currentsum(keep=fcstorig fcstdest enddate volume rename=(enddate=deldt)) N=volume;
+run;
+
+/*proc sql noprint;*/
+/*	create table currentsum as */
+/*	select fcstorig*/
+/*		,fcstdest*/
+/*		,enddate as deldt*/
+/*		,count(ordnum) as volume*/
+/*	from currentord*/
+/*	group by fcstorig*/
+/*		,fcstdest*/
+/*		,enddate;*/
+/*quit;*/
+
+/* ************************************************************************** */
+/* ************************************************************************** */
+/* Calculate transit + turn off of forecasted pickups */
+/* ************************************************************************** */
+/* ************************************************************************** */
+
+proc datasets lib=work;
+delete majordel;
+run;
+
+/* ************************************************************************** */
+/* get forecasted pickups */
+data majordel;
+	set hublib.majorfcstsummary(rename=(count=volume));
+run;
+
+/* ************************************************************************** */
+/* join them with transit times, and do date math */
+proc sort data=majordel;
+	by fcstorig fcstdest;
+
+proc sort data=ld_nt_time;
+	by fcstorig fcstdest;
+
+data majordel;
+	merge majordel(in=left) ld_nt_time;
+	by fcstorig fcstdest;
+	*filter out results from joins;
+	if left;
+	if transitdays eq . then transitdays = &medtransit;
+	*date math;
+	ndt = intnx('day', fcstdt, transitdays);
+	*create dow for turntime join;
+	DowNotify = weekday(ndt);
+run;
+
+/* ************************************************************************** */
+/* join them with turn times and do date math */
+proc sort data=majordel;
+	by fcstorig fcstdest DowNotify;
+
+proc sort data=nt_cu_time;
+	by fcstorig fcstdest DowNotify;
+
+data majordel;
+	merge majordel(in=left) nt_cu_time;
+	by fcstorig fcstdest DowNotify;
+	*left join;
+	if left;
+run;
+
+proc sort data=majordel;
+	by DowNotify;
+
+proc sort data=nt_cu_time_all;
+	by DowNotify;
+
+data majordel;
+	merge majordel(in=left) nt_cu_time_all;
+	by DowNotify;
+	*left join;
+	if left;
+	*replace blank turn times with turntimeorphan;
+	if turndays eq . then turndays = turndaysorphan;
+	*drop turndaysorphan;
+	*date math;
+	deldt = intnx('day',ndt,turndays);
+	format deldt date9.;
+	keep fcstorig fcstdest deldt volume;
+run;
+
+
+
+/* ************************************************************************** */
+/* ************************************************************************** */
+/* Combine Currents, Major Origins and Minor Origins */
+/* ************************************************************************** */
+/* ************************************************************************** */
+
+proc datasets;
+delete tdel;
+run;
+
+data tdel;
+	set majordel currentsum;
+run;
+
+/*proc contents data=f;*/
+/*proc contents data=majordel;*/
+/*proc contents data=currentsum;*/
+/*proc contents data=hublib.majorfcstsummary;*/
+/*run;*/
+/**/
+/*proc export data=f dbms=csv replace outfile='c:\sfc.csv';*/
+/*run;*/
+
+
+/* ************************************************************************** */
+/* ************************************************************************** */
+/* Do forecast to get DEL for minor origins */
+/* ************************************************************************** */
+/* ************************************************************************** */
+
+/*
+proc datasets lib=hublib;
+quit;
+
+proc contents data=hublib.rmpmktfcstmktgroups;
+run;
+
+data _null_ ; set hublib.rmpmktfcstmktgroups;
+put origrampmkt destrampmkt fcstdest fcstorig majmktflag;
+run;
+
+data minmkts;
+	set hublib.rmpmktfcstmktgroups;
+	where fcstdest eq 'ZZOTH';
+run;
+
+proc datasets lib=hublib;
+run;
+
+data _null_; set hublib.minorodsupplydata;
+put _all_;
+run;
+
+data _null_;
+set hublib.minororig;
+put _all_;
+run;
+*/
+
+**************;
+/*
+data minorpku;
+	set hublib.minorodsupplydata hublib.minororig;
+run;
+
+data minorpku;
+	set alldataplus;
+	where majmktflag in (0,-1);
+run;
+
+proc freq data=hublib.alldataplus;
+	table majmktflag;
+run;
+
+proc contents data=alldataplus;
+run;
+
+proc print data=inorigs;
+run;
+
+proc print data=hublib.fcstods;
+run;
+
+proc print data=work.inorigs;
+run;
+
+proc datasets lib=hublib;quit;
+
+proc contents data=minorpku;run;
+

@@ -1,0 +1,474 @@
+IF object_id('jk_temp_cost_zone_comparo') IS NOT NULL
+	DROP TABLE jk_temp_cost_zone_comparo
+
+USE DW_PA
+
+  #MarketPriceModel_Increased
+Select * into #MarketPriceModel_Increased from MarketPriceModel_Increased
+
+-- Drop Old Zone Columns
+ALTER TABLE #MarketPriceModel_Increased
+
+DROP COLUMN OriginZoneNumber
+	,DestinationZoneNumber
+
+--Add New Zone Columns
+ALTER TABLE #MarketPriceModel_Increased ADD OriginZoneNumber NVARCHAR(255)
+	,DestinationZoneNumber NVARCHAR(255)
+
+-- Add O Zone
+MERGE INTO #MarketPriceModel_Increased AS Model
+USING NewZonesDef AS NZ
+	ON left(model.originzipcode, 3) = NZ.zip3
+WHEN MATCHED
+	THEN
+		UPDATE
+		SET OriginZoneNumber = NZ.[New Zone];
+
+--Add D Zone
+MERGE INTO #MarketPriceModel_Increased AS Model
+USING NewZonesDef AS NZ
+	ON left(model.DestinationZipCode, 3) = NZ.zip3
+WHEN MATCHED
+	THEN
+		UPDATE
+		SET DestinationZoneNumber = NZ.[New Zone];
+		
+--Update Total Cost
+UPDATE #MarketPriceModel_Increased
+SET TotalCost = ODRLHCost + Rail_LHL_Actual_Cost + DDRLHCost + Rail_Fuel_Actual_Cost + PerDiemCost + EquipmentCost + ODRFuelCost + DDRFuelCost
+
+
+begin try
+DROP TABLE #MarketPriceModel_ZZ_New
+end try
+begin catch
+end catch
+
+	
+-- Create Base Table
+SELECT DISTINCT OriginZoneNumber AS [O Zone]
+	,DestinationZoneNumber AS [D Zone]
+	,CAST(NULL AS FLOAT) AS [Volume]
+	,CAST(NULL AS FLOAT) AS [Fleet Percent]
+	,CAST(NULL AS FLOAT) AS [Blend MPU]
+	,CAST(NULL AS FLOAT) AS [Blend MPU_StDev]
+	,CAST(NULL AS FLOAT) AS [Fleet MPU]
+	,CAST(NULL AS FLOAT) AS [Fleet MPU_StDev]
+	,CAST(NULL AS FLOAT) AS [EMP MPU]
+	,CAST(NULL AS FLOAT) AS [EMP MPU_StDev]
+	,CAST(NULL AS FLOAT) AS [Total Cost Blend]
+	,CAST(NULL AS FLOAT) AS [Total Cost Blend_StDev]
+	,CAST(NULL AS FLOAT) AS [Total Cost Fleet]
+	,CAST(NULL AS FLOAT) AS [Total Cost Fleet_StDev]
+	,CAST(NULL AS FLOAT) AS [Total Cost EMP]
+	,CAST(NULL AS FLOAT) AS [Total Cost EMP_StDev]
+	,CAST(NULL AS FLOAT) AS [ODR Cost]
+	,CAST(NULL AS FLOAT) AS [ODR Cost_StDev]
+	,CAST(NULL AS FLOAT) AS [DDR Cost]
+	,CAST(NULL AS FLOAT) AS [DDR Cost_StDev]
+	,CAST(NULL AS FLOAT) AS [Avg Miles]
+	,CAST(NULL AS FLOAT) AS [Avg Miles_StDev]
+INTO MarketPriceModel_ZZ_New
+FROM #MarketPriceModel_Increased
+WHERE LoadNumber IS NOT NULL
+	AND OriginZoneNumber IS NOT NULL
+	AND DestinationZoneNumber IS NOT NULL
+	AND OriginRampMarket IS NOT NULL
+	AND DestinationRampMarket IS NOT NULL
+	AND OriginZoneNumber <> ''
+	AND DestinationZoneNumber <> ''
+	AND OriginRampMarket <> ''
+	AND DestinationRampMarket <> ''
+	AND DSRDate BETWEEN DATEADD(m, - 2, (DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)))
+		AND DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)
+
+
+	
+--Update Volume in ZZ VIEW
+UPDATE MarketPriceModel_ZZ_New
+SET VOLUME = b.VolumeAnnualized
+FROM MarketPriceModel_ZZ_New A
+LEFT JOIN (
+	SELECT OriginZoneNumber
+		,DestinationZoneNumber
+		,count(LoadNumber) * 2 AS VolumeAnnualized
+	FROM #MarketPriceModel_Increased
+	WHERE LoadNumber IS NOT NULL
+		AND OriginRampMarket IS NOT NULL
+		AND OriginRampMarket <> ''
+		AND DestinationRampMarket IS NOT NULL
+		AND DestinationRampMarket <> ''
+	GROUP BY OriginZoneNumber
+		,DestinationZoneNumber
+	) B ON B.OriginZoneNumber = A.[O Zone]
+	AND B.DestinationZoneNumber = A.[D Zone]
+	
+--Update Miles in ZZ VIEW
+UPDATE MarketPriceModel_ZZ_New
+SET [Avg Miles] = b.Mileage
+,[Avg Miles_StDev] = b.Mileage_SD
+FROM MarketPriceModel_ZZ_New A
+LEFT JOIN (
+	SELECT OriginZoneNumber
+		,DestinationZoneNumber
+		,AVG(OrderMiles) AS Mileage
+		,STDEV(OrderMiles) as Mileage_SD
+	FROM #MarketPriceModel_Increased
+	WHERE LoadNumber IS NOT NULL
+		AND OriginRampMarket IS NOT NULL
+		AND OriginRampMarket <> ''
+		AND DestinationRampMarket IS NOT NULL
+		AND DestinationRampMarket <> ''
+	GROUP BY OriginZoneNumber
+		,DestinationZoneNumber
+	) B ON B.OriginZoneNumber = A.[O Zone]
+	AND B.DestinationZoneNumber = A.[D Zone]
+	
+	
+-- Update Fleet PCT in ZZ VIEW
+UPDATE MarketPriceModel_ZZ_New
+SET [Fleet Percent] = CONVERT(FLOAT,b.TwoMonthFleetVolume) / CONVERT(FLOAT,b.TwoMonthVolume)
+FROM MarketPriceModel_ZZ_New A
+LEFT JOIN (
+	SELECT A.OriginZoneNumber
+		,A.DestinationZoneNumber
+		,count(LoadNumber) AS TwoMonthVolume
+		,MAX(B.TwoMonthFleetVolume) AS TwoMonthFleetVolume 
+	FROM #MarketPriceModel_Increased A
+	LEFT JOIN (
+		SELECT OriginZoneNumber
+			,DestinationZoneNumber
+			,count(LoadNumber) AS TwoMonthFleetVolume
+		FROM #MarketPriceModel_Increased
+		WHERE LoadNumber IS NOT NULL
+			AND EquipmentProvider = 'UPHU'
+			AND OriginRampMarket IS NOT NULL
+			AND OriginRampMarket <> ''
+			AND DestinationRampMarket IS NOT NULL
+			AND DestinationRampMarket <> ''
+			AND DSRDate BETWEEN DATEADD(m, - 2, (DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)))
+				AND DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)
+		GROUP BY OriginZoneNumber
+			,DestinationZoneNumber
+		) B ON B.OriginZoneNumber = A.OriginZoneNumber
+		AND B.DestinationZoneNumber = A.DestinationZoneNumber
+	WHERE LoadNumber IS NOT NULL
+		AND A.OriginRampMarket IS NOT NULL
+		AND A.OriginRampMarket <> ''
+		AND A.DestinationRampMarket IS NOT NULL
+		AND A.DestinationRampMarket <> ''
+		AND A.DSRDate BETWEEN DATEADD(m, - 2, (DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)))
+			AND DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)
+	GROUP BY A.OriginZoneNumber
+		,A.DestinationZoneNumber
+	) b ON B.OriginZoneNumber = A.[O Zone]
+	AND B.DestinationZoneNumber = A.[D Zone]
+	
+--Update Fleet PCT where Null
+UPDATE MarketPriceModel_ZZ_New
+SET [Fleet Percent] = 0
+where [Fleet Percent] is null
+	
+--Update Base Cost Data in ZZ VIEW
+UPDATE MarketPriceModel_ZZ_New
+SET [ODR Cost] = b.ODRCost
+	,[DDR Cost] = b.DDRCost
+	,[ODR Cost_StDev] = b.ODRCost_SD
+	,[DDR Cost_StDev] = b.DDRCost_SD
+	,[Total Cost Blend] = b.TotalCost
+	,[Total Cost Blend_StDev] = b.TotalCost_SD
+FROM MarketPriceModel_ZZ_New A
+LEFT JOIN (
+	SELECT OriginZoneNumber
+		,DestinationZoneNumber
+		,avg(ODRLHCost) AS ODRCost
+		,stdev(ODRLHCost) AS ODRCost_SD
+		,avg(TotalCost) as TotalCost
+		,stdev(TotalCost) as TotalCost_SD
+		,avg(DDRLHCost) AS DDRCost
+		,STDEV(DDRLHCost) AS DDRCost_SD		
+	FROM #MarketPriceModel_Increased
+	WHERE LoadNumber IS NOT NULL
+		AND OriginRampMarket IS NOT NULL
+		AND OriginRampMarket <> ''
+		AND DestinationRampMarket IS NOT NULL
+		AND DestinationRampMarket <> ''
+		AND DSRDate BETWEEN DATEADD(m, - 2, (DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)))
+			AND DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)
+	GROUP BY OriginZoneNumber
+		,DestinationZoneNumber
+	) B ON B.OriginZoneNumber = A.[O Zone]
+	AND B.DestinationZoneNumber = A.[D Zone]
+	
+
+--Add Columns for Fleet Only and EMP Only Cost Totals
+ALTER TABLE #MarketPriceModel_Increased ADD FleetLHLFinal FLOAT
+	,FleetFuelFinal FLOAT
+	,FleetTotalCostFinal FLoat
+	,EMPTotalCostFinal Float
+	,BlendMPUFinal FLOAT
+	,FleetMPUFinal FLOAT
+	,EMPMPUFinal FLOAT
+
+--Update Fleet Only Cost Numbers
+update #MarketPriceModel_Increased
+set FleetLHLFinal = CASE WHEN FleetFuel = 0 and EquipmentProvider = 'UPHU' then RAIL_LHL_ACTUAL_COST ELSE FleetLHL END
+,FleetFuelFinal = CASE WHEN FleetFuel = 0 AND EquipmentProvider = 'UPHU' then RAIL_FUEL_ACTUAL_COST ELSE FleetFuel END
+
+--Update Fleet Total Cost and EMP Total COST
+UPDATE #MarketPriceModel_Increased
+set FleetTotalCostFinal = FleetLHLFinal + FleetFuelFinal + PerDiemCost + EquipmentCost + ODRLHCost + DDRLHCost + ODRFuelCost + DDRFuelCost
+,EMPTotalCostFinal = EMPLHL + EMPFuel + PerDiemCost + EquipmentCost + ODRLHCost + DDRLHCost + ODRFuelCost + DDRFuelCost
+
+--Update MPU Values	
+UPDATE 	#MarketPriceModel_Increased
+SET BlendMPUFinal = TotalRevenue - TotalCost
+	,FleetMPUFinal = TotalRevenue - FleetTotalCostFinal
+	,EMPMPUFinal = TotalRevenue - EMPTotalCostFinal
+	
+
+	
+--Update Fleet Total Cost Data in ZZ VIEW
+UPDATE MarketPriceModel_ZZ_New
+SET [Total Cost Fleet] = b.TotalCostFleet
+	,[Total Cost Fleet_StDev] = b.TotalCostFleet_SD
+	,[Fleet MPU] = b.FleetMPU
+	,[Fleet MPU_StDev] = b.TotalCostFleet_SD
+FROM MarketPriceModel_ZZ_New A
+LEFT JOIN (
+	SELECT OriginZoneNumber
+		,DestinationZoneNumber
+		,avg([FleetTotalCostFinal]) as TotalCostFleet
+		,stdev([FleetTotalCostFinal]) as TotalCostFleet_SD
+		,avg(FleetMPUFinal) as FleetMPU
+		,stdev(FleetMPUFinal) as FleetMPU_SD
+	FROM #MarketPriceModel_Increased
+	WHERE LoadNumber IS NOT NULL
+		AND FleetFuel is not null
+		AND NOT (EquipmentProvider = 'EMP' and FleetFuel = 0)
+		AND OriginRampMarket IS NOT NULL
+		AND OriginRampMarket <> ''
+		AND DestinationRampMarket IS NOT NULL
+		AND DestinationRampMarket <> ''
+		AND DSRDate BETWEEN DATEADD(m, - 2, (DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)))
+			AND DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)
+	GROUP BY OriginZoneNumber
+		,DestinationZoneNumber
+	) B ON B.OriginZoneNumber = A.[O Zone]
+	AND B.DestinationZoneNumber = A.[D Zone]
+
+
+--Update EMP Total Cost Data in ZZ VIEW
+UPDATE MarketPriceModel_ZZ_New
+SET [Total Cost EMP] = b.TotalCostEMP
+	,[Total Cost EMP_StDev] = TotalCostEMP_SD
+	,[EMP MPU] = b.EMPMPU
+	,[EMP MPU_StDev] = b.EMPMPU_SD
+FROM MarketPriceModel_ZZ_New A
+LEFT JOIN (
+	SELECT OriginZoneNumber
+		,DestinationZoneNumber
+		,avg([EMPTotalCostFinal]) as TotalCostEMP
+		,stdev([EMPTotalCostFinal]) as TotalCostEMP_SD
+		,avg(EMPMPUFinal) as EMPMPU
+		,stdev(EMPMPUFinal) as EMPMPU_SD
+	FROM #MarketPriceModel_Increased
+	WHERE LoadNumber IS NOT NULL
+		AND EMPFuel is not null
+		and EMPLHL <> 0
+		AND OriginRampMarket IS NOT NULL
+		AND OriginRampMarket <> ''
+		AND DestinationRampMarket IS NOT NULL
+		AND DestinationRampMarket <> ''
+		AND DSRDate BETWEEN DATEADD(m, - 2, (DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)))
+			AND DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)
+	GROUP BY OriginZoneNumber
+		,DestinationZoneNumber
+	) B ON B.OriginZoneNumber = A.[O Zone]
+	AND B.DestinationZoneNumber = A.[D Zone]
+	
+
+--Update Blended MPU VALUES
+UPDATE MarketPriceModel_ZZ_New
+SET [Blend MPU] = b.BlendMPUFinal
+,[Blend MPU_StDev] = b.BlendMPUFinal_SD
+FROM MarketPriceModel_ZZ_New A
+LEFT JOIN (
+	SELECT OriginZoneNumber
+		,DestinationZoneNumber
+		,avg(BlendMPUFinal) AS BlendMPUFinal
+		,stdev(BlendMPUFinal) AS BlendMPUFinal_SD
+	FROM #MarketPriceModel_Increased
+	WHERE LoadNumber IS NOT NULL
+		AND OriginRampMarket IS NOT NULL
+		AND OriginRampMarket <> ''
+		AND DestinationRampMarket IS NOT NULL
+		AND DestinationRampMarket <> ''
+		AND DSRDate BETWEEN DATEADD(m, - 2, (DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)))
+			AND DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)
+	GROUP BY OriginZoneNumber
+		,DestinationZoneNumber
+	) B ON B.OriginZoneNumber = A.[O Zone]
+	AND B.DestinationZoneNumber = A.[D Zone]
+
+
+
+-- Create Base Table
+SELECT DISTINCT left(OriginZipCode,3) as OZip
+	,left(DestinationZipCode,3) as DZip
+	,CAST(NULL AS varchar(255)) AS OriginZoneNew
+	,CAST(NULL AS varchar(255)) AS DestinationZoneNew
+	,CAST(NULL AS varchar(255)) AS OriginZoneOld
+	,CAST(NULL AS varchar(255)) AS DestinationZoneOld
+	,CAST(NULL AS FLOAT) AS [Volume]
+	,CAST(NULL AS FLOAT) AS [Volume_Old]
+	,CAST(NULL AS FLOAT) AS [Fleet Percent]
+	,CAST(NULL AS FLOAT) AS [Fleet Percent_Old]
+	,CAST(NULL AS FLOAT) AS [Blend MPU]
+	,CAST(NULL AS FLOAT) AS [Blend MPU_StDev]
+	,CAST(NULL AS FLOAT) AS [Blend MPU_Old]
+	,CAST(NULL AS FLOAT) AS [Blend MPU_Old_StDev]
+	,CAST(NULL AS FLOAT) AS [Fleet MPU]
+	,CAST(NULL AS FLOAT) AS [Fleet MPU_StDev]
+	,CAST(NULL AS FLOAT) AS [Fleet MPU_Old]
+	,CAST(NULL AS FLOAT) AS [Fleet MPU_Old_StDev]
+	,CAST(NULL AS FLOAT) AS [EMP MPU]
+	,CAST(NULL AS FLOAT) AS [EMP MPU_StDev]
+	,CAST(NULL AS FLOAT) AS [EMP MPU_Old]
+	,CAST(NULL AS FLOAT) AS [EMP MPU_Old_StDev] 
+	,CAST(NULL AS FLOAT) AS [Total Cost Blend]
+	,CAST(NULL AS FLOAT) AS [Total Cost Blend_StDev]
+	,CAST(NULL AS FLOAT) AS [Total Cost Blend_Old]
+	,CAST(NULL AS FLOAT) AS [Total Cost Blend_Old_StDev]
+	,CAST(NULL AS FLOAT) AS [Total Cost Fleet]
+	,CAST(NULL AS FLOAT) AS [Total Cost Fleet_StDev]
+	,CAST(NULL AS FLOAT) AS [Total Cost Fleet_Old]
+	,CAST(NULL AS FLOAT) AS [Total Cost Fleet_Old_StDev]
+	,CAST(NULL AS FLOAT) AS [Total Cost EMP]
+	,CAST(NULL AS FLOAT) AS [Total Cost EMP_StDev]
+	,CAST(NULL AS FLOAT) AS [Total Cost EMP_Old]
+	,CAST(NULL AS FLOAT) AS [Total Cost EMP_Old_StDev]
+	,CAST(NULL AS FLOAT) AS [ODR Cost]
+	,CAST(NULL AS FLOAT) AS [ODR Cost_StDev]
+	,CAST(NULL AS FLOAT) AS [ODR Cost_Old]
+	,CAST(NULL AS FLOAT) AS [ODR Cost_Old_StDev]
+	,CAST(NULL AS FLOAT) AS [DDR Cost]
+	,CAST(NULL AS FLOAT) AS [DDR Cost_StDev]
+	,CAST(NULL AS FLOAT) AS [DDR Cost_Old]
+	,CAST(NULL AS FLOAT) AS [DDR Cost_Old_StDev]
+	,CAST(NULL AS FLOAT) AS [Avg Miles]
+	,CAST(NULL AS FLOAT) AS [Avg Miles_StDev]
+	,CAST(NULL AS FLOAT) AS [Avg Miles_Old]
+	,CAST(NULL AS FLOAT) AS [Avg Miles_Old_StDev]
+INTO jk_temp_cost_zone_comparo
+FROM #MarketPriceModel_Increased
+WHERE LoadNumber IS NOT NULL
+	AND OriginZoneNumber IS NOT NULL
+	AND DestinationZoneNumber IS NOT NULL
+	AND OriginRampMarket IS NOT NULL
+	AND DestinationRampMarket IS NOT NULL
+	AND OriginZoneNumber <> ''
+	AND DestinationZoneNumber <> ''
+	AND OriginRampMarket <> ''
+	AND DestinationRampMarket <> ''
+	AND DSRDate BETWEEN DATEADD(m, - 2, (DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)))
+	AND DATEADD(wk, DATEDIFF(wk, 7, GETDATE()), 5)
+GROUP BY left(OriginZipCode,3)
+	,left(DestinationZipCode,3)
+	
+-- Add O Zone Old
+MERGE INTO jk_temp_cost_zone_comparo AS Model
+USING CurrentZonesDef AS NZ
+	ON ozip = convert(varchar,NZ.zip3)
+WHEN MATCHED
+	THEN
+		UPDATE
+		SET OriginZoneOld = NZ.[Current Zone Desc];
+
+--Add D Zone Old
+MERGE INTO jk_temp_cost_zone_comparo AS Model
+USING CurrentZonesDef AS NZ
+	ON dzip = convert(varchar,NZ.zip3)
+WHEN MATCHED
+	THEN
+		UPDATE
+		SET DestinationZoneOld = NZ.[Current Zone Desc];
+		
+-- Add O Zone New
+MERGE INTO jk_temp_cost_zone_comparo AS Model
+USING dbo.jk_temp_zones AS NZ
+	ON ozip = NZ.zip3
+WHEN MATCHED
+	THEN
+		UPDATE
+		SET OriginZoneNew = NZ.[New Zone];
+
+--Add D Zone New
+MERGE INTO jk_temp_cost_zone_comparo AS Model
+USING dbo.jk_temp_zones AS NZ
+	ON Dzip = NZ.zip3
+WHEN MATCHED
+	THEN
+		UPDATE
+		SET DestinationZoneNew = NZ.[New Zone];
+		
+		
+--Update New Information
+MERGE INTO jk_temp_cost_zone_comparo AS Model
+USING #MarketPriceModel_ZZ_New AS ZoneUpdate
+	ON Model.OriginZoneNew = ZoneUpdate.[O Zone]
+		AND Model.DestinationZoneNew = ZoneUpdate.[D Zone]
+WHEN MATCHED
+	THEN
+		UPDATE
+		SET [Volume] = ZoneUpdate.[Volume]
+			,[Fleet Percent] = ZoneUpdate.[Fleet Percent]
+			,[Blend MPU] = ZoneUpdate.[Blend MPU]
+			,[Blend MPU_StDev] = ZoneUpdate.[Blend MPU_StDev]
+			,[Fleet MPU] = ZoneUpdate.[Fleet MPU]
+			,[Fleet MPU_StDev] = ZoneUpdate.[Fleet MPU_StDev]
+			,[EMP MPU] = ZoneUpdate.[EMP MPU]
+			,[EMP MPU_StDev] = ZoneUpdate.[EMP MPU_StDev]
+			,[Total Cost Blend] = ZoneUpdate.[Total Cost Blend]
+			,[Total Cost Blend_StDev] = ZoneUpdate.[Total Cost Blend_StDev]
+			,[Total Cost Fleet] = ZoneUpdate.[Total Cost Fleet]
+			,[Total Cost Fleet_StDev] = ZoneUpdate.[Total Cost Fleet_StDev]
+			,[Total Cost EMP] = ZoneUpdate.[Total Cost EMP]
+			,[Total Cost EMP_StDev] = ZoneUpdate.[Total Cost EMP_StDev]
+			,[ODR Cost] = ZoneUpdate.[ODR Cost]
+			,[ODR Cost_StDev] = ZoneUpdate.[ODR Cost_StDev]
+			,[DDR Cost] = ZoneUpdate.[DDR Cost]
+			,[DDR Cost_StDev] = ZoneUpdate.[DDR Cost_StDev]
+			,[Avg Miles] = ZoneUpdate.[Avg Miles]
+			,[Avg Miles_StDev] = ZoneUpdate.[Avg Miles_StDev];
+
+
+--Update Old Information
+MERGE INTO jk_temp_cost_zone_comparo AS Model
+USING MarketPriceModel_ZZ_Old AS ZoneUpdate
+	ON Model.OriginZoneOld = ZoneUpdate.[O Zone]
+		AND Model.DestinationZoneOld = ZoneUpdate.[D Zone]
+WHEN MATCHED
+	THEN
+		UPDATE
+		SET [Volume_Old] = ZoneUpdate.[Volume]
+			,[Fleet Percent_Old] = ZoneUpdate.[Fleet Percent]
+			,[Blend MPU_Old] = ZoneUpdate.[Blend MPU]
+			,[Blend MPU_Old_StDev] = ZoneUpdate.[Blend MPU_StDev]
+			,[Fleet MPU_Old] = ZoneUpdate.[Fleet MPU]
+			,[Fleet MPU_Old_StDev] = ZoneUpdate.[Fleet MPU_StDev]
+			,[EMP MPU_Old] = ZoneUpdate.[EMP MPU]
+			,[EMP MPU_Old_StDev] = ZoneUpdate.[EMP MPU_StDev]
+			,[Total Cost Blend_Old] = ZoneUpdate.[Total Cost Blend]
+			,[Total Cost Blend_Old_StDev] = ZoneUpdate.[Total Cost Blend_StDev]
+			,[Total Cost Fleet_Old] = ZoneUpdate.[Total Cost Fleet]
+			,[Total Cost Fleet_Old_StDev] = ZoneUpdate.[Total Cost Fleet_StDev]
+			,[Total Cost EMP_Old] = ZoneUpdate.[Total Cost EMP]
+			,[Total Cost EMP_Old_StDev] = ZoneUpdate.[Total Cost EMP_StDev]
+			,[ODR Cost_Old] = ZoneUpdate.[ODR Cost]
+			,[ODR Cost_Old_StDev] = ZoneUpdate.[ODR Cost_StDev]
+			,[DDR Cost_Old] = ZoneUpdate.[DDR Cost]
+			,[DDR Cost_Old_StDev] = ZoneUpdate.[DDR Cost_StDev]
+			,[Avg Miles_Old] = ZoneUpdate.[Avg Miles]
+			,[Avg Miles_Old_StDev] = ZoneUpdate.[Avg Miles_StDev];

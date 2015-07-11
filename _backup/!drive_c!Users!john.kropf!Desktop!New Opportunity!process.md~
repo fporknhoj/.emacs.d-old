@@ -1,0 +1,139 @@
+Required Columns:
+opportunity number
+reporting customer number
+reporting customer name
+customer number
+customer name
+origin city
+origin state
+origin zip
+dest city
+dest state
+dest zip
+o mkt ramp
+d mkt ramp
+sales rep
+most recent create date
+sum(total hist vol)
+sum(NI Opportunity Volume)
+sum(max volume)
+
+
+Needed cleans:
+1. Grab data
+
+1. update reporting customer number
+
+1. Annualize Volume, setting blanks to 1
+   
+   * if volume is 1, and iml bid volume is greater set to iml bid vol
+   * if volume is 1, and iml price volume is greater set to iml price vol
+   * if volume is 1, and otr bid volume is greater set to otr bid vol
+   * if volume is 1 and otr price volume is greater set to otr price volume
+
+1. for home depot (1450 or 23361 when the annual volume is 52, set annual
+   volume to 20
+
+1. rtrim locational text values
+
+1. make a list of max opp num based by rep cust no, o/d pair
+
+1. set [last op number] col to max op number for each max op number in list
+
+1. make lane key columnn
+
+1. where o/d state is bj, change origin zone to 979
+
+1. join to zone zone ramp ramp table and apply zone routing and
+   im feasibility flag
+
+1. update ozone/dzone ramp columns with zone/ramp concatenation
+
+1. join zonerampstatus and zonerampramk joined on ramps where:
+
+    rank is zoneramprank2
+    o/d zone name to zrname
+    o/d status to zrstatus
+
+1. make a table of historical lanes with:
+
+        rcn, o/d c/s, transportation mode, sum(opsum.vol), count(opsum.loadnum)
+    where:
+        order status not in cnl,cwc,dlt or in dlv,rbl,dsp
+        rev total > 1
+        cost total > 1
+        last 183 days (last 6 mos)
+        before date being run
+
+1. trim historical lanes o/d c/s pairs
+
+1. add lane key to historical tables
+
+1. join to opoortunity table on lane key and update iml_historical_vol to
+   count of load number where last opp nbr > 0 and tnsp mode is IML
+
+1. do the same as above for OTR lanes
+
+1. add IML and OTR historical volume for total historical volume
+
+1. update opportunities max volume to the largest of volume best or total
+   historical volume
+
+1. 
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Update IML Bid Volume
+Update IML Price
+Update OTR Price
+Update Price 
+
+
+
+Op Detail:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+oppprtunity detail:
+
+join on opp number
+
+transport mode, submode, eq, len
+has moved?
+volume
+salesrep

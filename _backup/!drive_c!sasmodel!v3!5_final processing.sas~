@@ -1,0 +1,427 @@
+/* ************* */
+/* Format output */
+/* ************* */
+
+proc sql;
+	connect to odbc as dw2 (datasrc="DW2");
+    create table avgout as select * from connection to dw2 
+    (
+        select OriginRampSubMarket as fcstorig 
+        ,      DestinationRampSubMarket as fcstdest 
+        ,      datepart(weekday,DSRDate) as dow
+        ,      convert(float,sum(volume))/8 as loads
+		from OperationalSummary
+        where DSRDate between DATEADD(MONTH, -2, current_timestamp) and current_timestamp
+            and transportationmode = 'iml'
+            and transportationsubmode = ''
+            and origincity <> ''
+            and destinationcity <> ''
+            and originrampsubmarket <> ''
+            and destinationrampsubmarket <> ''
+        group by OriginRampSubMarket
+        ,        DestinationRampSubMarket
+        ,        datepart(weekday,DSRDate)
+    );
+
+	create table past2wks as select * from connection to dw2
+	(
+		select OriginRampMarket
+		,      DestinationRampMarket
+		,      OriginRampSubMarket
+		,      DestinationRampSubMarket
+		,      convert(date,DSRDate) as ForecastDate
+		,      SUM(volume) as Volume
+		from OperationalSummary
+		where DSRDate >= dateadd(WEEK ,-2 ,GETDATE())
+			and TransportationMode in ('IML')
+			and transportationsubmode=''
+			and origincity<>''
+			and destinationcity<>''
+			and orderstatus in ('DSP','RBL','DLV')
+			and EquipmentCategory <> 'ISO'
+			and not(loadnumber is null)
+		group by OriginRampMarket
+		,        DestinationRampMarket
+		,        OriginRampSubMarket
+		,        DestinationRampSubMarket
+		,        DSRDate
+
+	);
+
+	disconnect from dw2;
+
+    *create table for zzoth destinations;
+	create table avgoutorigonly as (
+	select fcstorig as fcstorig
+	,      "All" as fcstdest
+    ,      dow as dow
+    ,      avg(loads)
+    from avgout
+    group by fcstorig
+    ,        dow 
+    );
+quit;
+
+/* Combine od and o only average out times */
+data avgout2;
+set avgout avgoutorigonly;
+run;
+
+/* set dest column for small market fcst */
+data user.zzothfcst;
+retain fcst fcstorig fcstdest fcstdt;
+fcstdest="All";
+set HUBLIB.otherdemandfcst;
+run;
+
+/* Format output data */
+data prefcstoutput;
+set hublib.majordemandfcst zzothfcst;
+est = round(fcst,.01);
+if fcst < 0 then est = 0;
+run;
+
+proc sql;
+	*join table of historical volumes with forecast output tables;
+	create table finalfcstoutput as (
+    select a.*
+    ,      b.loads as act_avg_vol
+    from prefcstoutput a
+    left join avgout2 b 
+    on a.fcstorig = b.fcstorig and
+       a.fcstdest = b.fcstdest and
+       weekday(a.fcstdt) = b.dow
+    );
+quit;
+
+
+/* do weekend adjustments */
+data finalfcstoutput;
+set finalfcstoutput;
+if weekday(fcstdt) in (1,7) then weekendest = (est-act_avg_vol)/2;
+if weekday(fcstdt) in (1,7) then est = act_avg_vol;
+run;
+data sunfri;
+set finalfcstoutput;
+keep fcstorig fcstdest fcstdt wkendest;
+if weekday(fcstdt) = 1;
+fcstdt = intnx('day',fcstdt,-2);
+data sunmon;
+set finalfcstoutput;
+keep fcstorig fcstdest fcstdt wkendest;
+if weekday(fcstdt) = 1;
+fcstdt = intnx('day',fcstdt,1);
+data satfri;
+set finalfcstoutput;
+keep fcstorig fcstdest fcstdt wkendest;
+if weekday(fcstdt) = 7;
+fcstdt = intnx('day',fcstdt,-1);
+data satmon;
+set finalfcstoutput;
+keep fcstorig fcstdest fcstdt wkendest;
+if weekday(fcstdt) = 7;
+fcstdt = intnx('day',fcstdt,2);
+run;
+proc datasets library=work noprint;
+modify sunfri;
+rename wkendest=sunfri;
+modify sunmon;
+rename wkendest=sunmon;
+modify satfri;
+rename wkendest=satfri;
+modify satmon;
+rename wkendest=satmon;
+quit;
+proc sort data=sunfri;
+by fcstorig fcstdest fcstdt;
+proc sort data=sunmon;
+by fcstorig fcstdest fcstdt;
+proc sort data=satfri;
+by fcstorig fcstdest fcstdt;
+proc sort data=satmon;
+by fcstorig fcstdest fcstdt;
+run;
+data weekend;
+merge sunfri sunmon satfri satmon;
+by fcstorig fcstdest fcstdt;
+run;
+data weekend;
+set weekend;
+if sunfri eq . then sunfri = 0;
+if sunmon eq . then sunmon = 0;
+if satfri eq . then satfri = 0;
+if satmon eq . then satmon = 0;
+monest = satmon+sunmon;
+friest = satfri+sunfri;
+wkendnew = satmon+satfri+sunmon+sunfri;
+keep fcstorig fcstdest fcstdt wkendnew;
+run;
+proc sort data=weekend;
+by fcstorig fcstdest fcstdt;
+proc sort data=finalfcstoutput;
+by fcstorig fcstdest fcstdt;
+run;
+data finalfcstoutput3;
+set finalfcstoutput;
+merge finalfcstoutput(in=in1) weekend;
+by fcstorig fcstdest fcstdt;
+run;
+data finalfcstoutput;
+set finalfcstoutput;
+if est = . then est = 0;
+if wkendnew = . then wkendnew = 0;
+est = est + wkendnew;
+rename fcst = type;
+type = "Predicted";
+keep type fcstorig fcstdest fcstdt est;
+run;
+
+
+/* order vars */
+data finalfcstoutput;
+retain fcstorig fcstdest fcstdt est;
+set finalfcstoutput;
+keep fcstorig fcstdest fcstdt est;
+/* create RampMarket Variables */
+data finalfcstoutput;
+set finalfcstoutput;
+if fcstorig in ('ATLAR','ATLAL') then OriginRampMarket = 'ATLA ';
+else if fcstorig in ('DALL ','DALR ') then OriginRampMarket = 'DALAS';
+else if fcstorig in ('CHOH ','CHIN ','CHMI ','CHWI ','CHIL ','CHMET','CHCAN') then OriginRampMarket = 'CHGO ';
+else OriginRampMarket = fcstorig;
+if fcstdest in ('ATLAR','ATLAL') then DestinationRampMarket = 'ATLA ';
+else if fcstdest in ('DALL ','DALR ') then DestinationRampMarket = 'DALAS';
+else if fcstdest in ('CHOH ','CHIN ','CHMI ','CHWI ','CHIL ','CHMET','CHCAN') then DestinationRampMarket = 'CHGO ';
+else DestinationRampMarket = fcstdest;
+/* rename other variables */
+data finalfcstoutput;
+set finalfcstoutput;
+rename fcstorig = OriginRampSubMarket;
+rename fcstdest = DestinationRampSubMarket;
+rename fcstdt = ForecastDate;
+rename est = Volume;
+/* reorder variables */
+data finalfcstoutput;
+retain OriginRampMarket DestinationRampMarket 
+       OriginRampSubMarket DestinationRampSubMarket 
+       ForecastDate Volume;
+set finalfcstoutput;
+run;
+
+/* Change date format from text to number on past data so union will work */
+data past2wks;
+set past2wks;
+ForecastDate2 = input(strip(ForecastDate),yymmdd10.);
+drop ForecastDate;
+data past2wks;
+set past2wks;
+rename ForecastDate2 = ForecastDate;
+/* drop ForecastDate2; */
+data past2wks;
+retain OriginRampMarket DestinationRampMarket 
+	   OriginRampSubMarket DestinationRampSubMarket
+	   ForecastDate Volume;
+set past2wks;
+format ForecastDate date9.;
+run;
+
+/* stack actuals and forecasted volumes */
+data finalfcstoutput;
+set past2wks finalfcstoutput;
+run;
+
+/* Write table to PA */
+libname dwpa odbc dsn='dw_pa' schema=dbo;
+
+proc datasets library = dwpa noprint;
+delete big_box_demand_forecast_2_weeks;
+run;
+
+data dwpa.big_box_demand_forecast_2_weeks;
+set finalfcstoutput;
+run;
+
+
+/* supply stuff */
+
+proc sql;
+
+create table fpku as 
+select 
+	case when OriginRampSubMarket 
+		in ("CHIL ","CHIN ","CHOH ","CHWI ","CHCAN","CHMET") 
+		then "CHGO "
+	when OriginRampSubMarket in ("DALR ","DALL ")
+		then "DALAS"
+	when OriginRampSubMarket in ("ATLAL","ATLAR") 
+		then "ATLA " end as Market
+	,OriginRampSubMarket as SubMarket
+	,ForecastDate as dt
+	,weekday(ForecastDate) as dayofwk
+	,sum(volume) as volume
+	,"PKU" as Kind
+	,case when ForecastDate between
+		intnx('day',&today,14) and intnx('day',&today,7) then 2
+	when ForecastDate between 
+		intnx('day',&today,7) and intnx('day',&today,0) then 1 
+	end as wkflag
+from finalfcstoutput
+where ForecastDate between intnx('day',&today,14) and &today
+group by OriginRampSubMarket
+,ForecastDate
+
+;
+
+create table fdel as 
+select case when fcstdest in ("CHMET","CHIL ","CHWI ","CHIN ","CHOH ","CHCAN") then "CHGO "
+	when fcstdest in ("DALL ","DALR ") then "DALAS"
+	when fcstdest in ("ATLAR","ATLAL") then "ATLA "
+	else fcstdest end as Market
+	,fcstdest as SubMarket
+	,deldt as dt
+	,weekday(deldt) as dayofwk
+	,sum(volume)
+	,"DEL" as kind
+	,case when deldt between intnx('day',&today,14) and intnx('day',&today,7) then 2
+	when deldt between intnx('day',&today,7) and &today then 1 end as wkflag
+from combdel2
+where deldt >= &today
+group by submarket
+	,deldt
+	,weekday(deldt)
+
+;
+
+create table fupl as 
+select * from fdel
+union all 
+select * from fpku
+
+;
+
+quit;
+
+*proc means data=fupl;run;
+
+proc datasets lib=dwpa noprint;
+	delete fc_pku_del;
+run;
+
+data dwpa.fc_pku_del;
+	set fupl;
+run;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*data fpku;*/
+/*	retain Market SubMarket dt dayofwk volume kind wkflag;*/
+/*	set finalfcstoutput(rename=OriginRampMarket=Market rename=OriginRampSubMarket=SubMarket rename=ForecastDate=dt);*/
+/*	*if dt le intnx('week',&today,2) and dt ge &today;*/
+/*	if dt le intnx('day',&today,14) and dt ge intnx('day',&today,7) then wkflag = 2;*/
+/*	if dt lt intnx('day',&today,7) and dt ge &today then wkflag = 1;*/
+/*	if wkflag ne .;*/
+/*	DayOfWk = weekday(dt);*/
+/*	kind = "PKU";*/
+/*	keep Market Submarket dt DayOfWk Volume kind wkflag;*/
+/*run;*/
+/**/
+/*/*proc print data=fpku;*/*/
+/*/*run;*/*/
+/**/
+/**/
+/*proc freq data=combdel;*/
+/*table fcstdest;*/
+/*run;*/
+/**/
+/**/
+/*data fdel;*/
+/*	retain Market SubMarket dt dayofwk volume kind wkflag;*/
+/*	set combdel(rename=fcstdest=SubMarket rename=deldt=dt drop=fcstorig);*/
+/*	* Set Market ;*/
+/*	Market = SubMarket;*/
+/*	if SubMarket in ("CHMET","CHIL ","CHWI ","CHIN ","CHMI ","CHOH ","CHCAN") then Market = "CHGO ";*/
+/*	if SubMarket in ("DALL ","DALR ") then Market = "DALAS";*/
+/*	if SubMarket in ("ATLAR","ATLAL") then Market = "ATLA ";*/
+/*	*if Market ne "     " then Market = SubMarket;*/
+/*	*if Market not in ("CHGO ","DALAS","ATLA ") then Market = SubMarket;*/
+/*	*date limiters;*/
+/*	if dt le intnx('day',&today,14) and dt ge intnx('day',&today,7) then wkflag = 2;*/
+/*	if dt lt intnx('day',&today,7) and dt ge &today then wkflag = 1;*/
+/*	if wkflag ne .;*/
+/*	DayOfWk = weekday(dt);*/
+/*	kind = "DEL";*/
+/*	keep Market Submarket dt DayOfWk Volume kind wkflag;*/
+/*run;*/
+/**/
+/*data fuplpre;*/
+/*	set fpku fdel;*/
+/*run;*/
+/**/
+/*proc sort data=fuplpre;*/
+/*	by Market Submarket dt dayofwk kind wkflag;*/
+/**/
+/*proc means data=fuplpre noprint;*/
+/*	by Market Submarket dt dayofwk kind wkflag;*/
+/*	var Volume;*/
+/*	output out=fupl(keep=Market SubMarket dt dayofwk kind volume wkflag) sum=volume;*/
+/*run;*/
+/**/
+/*proc freq data=fupl;*/
+/*where kind = "PKU";*/
+/*table submarket;*/
+/*run;*/
+/**/
+/**proc print data=fupl;run;*/
+/**/
+/*proc datasets lib=dwpa noprint;*/
+/*	delete fc_pku_del;*/
+/*run;*/
+/**/
+/*data dwpa.fc_pku_del;*/
+/*	set fupl;*/
+/*run;*/

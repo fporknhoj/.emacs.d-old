@@ -1,0 +1,160 @@
+%include 'c:\sasmodel\v2\4.1_fcst_turntime.sas';
+
+proc sort data= work.alldataplus;
+    by eqid loaddt;
+run;
+
+/* get out market equipment table from brendan */
+libname dwpa odbc datasrc='dw_pa' schema=dbo;
+data hublib.outnetworkequipment;
+    set dwpa.outmarketequip;
+run;
+
+data work.transit1;
+    set work.alldataplus;
+    if lastdtdef = 'LD';
+    if datepart(lastdt) GE &today - &fcstoffset - &transupdays;
+run;
+
+proc sort data= work.transit1;
+    by fcstorig fcdest
+run;
+
+data work.transit;
+    merge transit1 hublib.transitmedian;
+    if lastdtdef = 'LD';
+    if loadtonotify50 EQ . then loadtonotify50 = 6;
+    projnotifydt = datepart(intnx('dtday',lastdt,loadtonotify50));
+    lastevdate = datepart(lastdt);
+    if lastevdate GE &today - &fcstoffset - &transupdays;
+run;
+
+data work.turners;
+    set work.alldataplus;
+    lastevdate = datepart(lastdt);
+    if lastdtdef EQ 'ET' or lastdtdef EQ 'AR';
+    if datepart(lastdt) GE &today - &fcstoffset - &turnsupdays;
+    if LastDtDef EQ 'AR' then projnotifydt = NotifyDt;
+    if FleetAvailableFlag EQ 'Y';
+run;
+
+data work.movers;
+    set work.turners work.transit;
+    format notifyday date9. projnotifyday date9.;
+    Notifyday = datepart(projnotifydt);
+    notifydow = weekday(notifyday);
+    projnotifyday = datepart(projnotifydt);
+    if projnotifyday LT &today - 4 then projnotifyday = &today - 2;
+run;
+
+proc sort data= work.movers;
+    by fcstdest notifydow destcompname;
+run;
+
+proc sort data= hublib.turntimedowdist;
+    by fcstdest notifydow;
+run;
+
+data work.getdowturn;
+    merge work.movers hublib.turntimedowdist;
+    by fcstdest notifydow;
+run;
+
+data work.moversturn;
+    set work.getdowturn;
+    format supplydt date9. supplydt2 date9. notifyday date9. projnotifyday date9.;
+    supplydt  = intnx('dtday',projnotifydt,nottounloaddays);
+    supplydt2 = datepart(intnx('dtday',projnotifydt,nottounloaddays));
+    if supplydt GT &today;
+    * then supplydt = .; 
+    * if supplydt NE .;
+    loads = percent / 100;
+run;
+
+proc contents data= work.moversturn;
+run;
+
+
+data _null_;
+set work.moversturn;
+format supplydt date9. supplydt2 date9. nottounloaddays 10.5 projnotifydt date9. a date9. b date9. e date9. f date9. ;
+c = datepart(projnotifydt);
+d = datepart(nottounloaddays);
+*put supplydt supplydt2 nottounloaddays projnotifydt;
+a = intnx('day',projnotifydt,5);
+b = intnx('day',projnotifydt,nottounloaddays);
+*e = intnx('day',c,5);
+*f = intnx('day',c,d);
+put a b e f;
+run;
+
+proc sort data= work.moversturn;
+    by fcstdest supplydt;
+run;
+
+proc means data= work.moversturn noprint;
+    by fcstdest supplydt;
+    var loads;
+    output out= work.movingsupply sum=;
+run;
+proc means data= work.movingsupply sum;
+    var loads;
+run;
+
+proc means data= work.moversturn sum;
+    var loads;
+run;
+
+data work.loadedsupplyfcst;
+    set work.movingsupply;
+    if supplydt LE &today - &fcstoffset - &fcsthoriz and supplydt GE &today - &fcstoffset;
+    currentmovers = loads;
+    keep fcstdest supplydt currentmovers loads;
+run;
+
+proc means data= work.loadedsupplyfcst sum;
+    var currentmovers;
+run;
+
+proc sort data= work.moversturn;
+	by fcstdest supplydt fleetmove;
+run;
+
+proc means data= work.moversturn noprint;
+    by fcstdest supplydt fleetmove;
+    var loads;
+    output out= work.movingfleet  sum= ;
+run;
+
+data work.movingfleetonly;
+    set work.movingfleet;
+    if fleetmove EQ 1;
+    cmfleetcnt = loads;
+run;
+
+data work.movingemhuonly;
+    set work.movingfleet;
+    if fleetmove EQ 0;
+    cmnonfleetcnt = loads;
+run;
+
+data hublib.movingmix;
+    merge work.movingfleetonly work.movingemhuonly;
+    by fcstdest supplydt;
+    if cmfleetcnt EQ . then cmfleetcnt= 0;
+    if cmnonfleetcnt EQ . then cmnonfleetcnt= 0;
+    cmfleetpct = cmfleetcnt / ( cmfleetcnt + cmnonfleetcnt );
+    drop fleetmove;
+run;
+
+proc contents data= work.movingemhuonly;
+run;
+
+proc contents data= work.movingfleetonly;
+run;
+
+/*
+proc export data= hublib.movingmix
+outfile= 'c:\movingmix'
+dbms=csv replace;
+run;

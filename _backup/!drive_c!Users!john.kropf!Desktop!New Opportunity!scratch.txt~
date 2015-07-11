@@ -1,0 +1,150 @@
+UPDATE (ZoneRampStatus AS ZoneRampStatus_1 
+INNER JOIN 
+ (ZoneRampStatus 
+INNER JOIN 
+ [tbl Opportunities] 
+ON 
+ZoneRampStatus.ZoneRamp = [tbl Opportunities].OZONE_RAMP) 
+ON 
+ZoneRampStatus_1.ZoneRamp = [tbl Opportunities].DZONE_RAMP) 
+INNER JOIN 
+ ZoneRampRank 
+ON 
+(ZoneRampStatus.Status = ZoneRampRank.ORampZone) 
+ AND (ZoneRampStatus_1.Status = ZoneRampRank.DDrampZone)
+SET [tbl Opportunities].RANK = ZoneRampRank.Rank2,
+ [tbl Opportunities].ORIGIN_ZONE_NAME = ZoneRampStatus.ZoneName,
+ [tbl Opportunities].DESTINATION_ZONE_NAME = ZoneRampStatus_1.ZoneName,
+ [tbl Opportunities].OSTATUS = ZoneRampStatus.Status,
+ [tbl Opportunities].DSTATUS = ZoneRampStatus_1.Status;
+
+
+
+UPDATE [tbl Opportunities]
+SET [tbl Opportunities].ORIGIN_CITY = Trim([ORIGIN_CITY]),
+ [tbl Opportunities].ORIGIN_STATE = Trim([ORIGIN_STATE]),
+ [tbl Opportunities].DEST_CITY = Trim([DEST_CITY]),
+ [tbl Opportunities].DEST_STATE = Trim([DEST_STATE]);
+
+
+SELECT 
+dbo_OperationalSummary.ReportingCustomerNumber,
+ dbo_OperationalSummary.OriginCity,
+ dbo_OperationalSummary.OriginState,
+ dbo_OperationalSummary.DestinationCity,
+ dbo_OperationalSummary.DestinationState,
+ dbo_OperationalSummary.TransportationMode,
+ Sum(dbo_OperationalSummary.Volume) AS SumOfVolume,
+ Count(dbo_OperationalSummary.OrderNumber) AS CountOfOrderNumber,
+ "" AS LANE_KEY 
+INTO 
+[tbl Historical Lanes]
+FROM 
+dbo_OperationalSummary
+WHERE 
+(((dbo_OperationalSummary.OrderStatus)="DLV" Or (dbo_OperationalSummary.OrderStatus)="RBL" Or (dbo_OperationalSummary.OrderStatus)="DSP") 
+ AND ((dbo_OperationalSummary.RevenueTotal)>1) 
+ AND ((dbo_OperationalSummary.CostTotal)>1) 
+ AND ((dbo_OperationalSummary.DSRDate)>=(Date()-183) 
+ AND (dbo_OperationalSummary.DSRDate)<Date()))
+GROUP BY 
+dbo_OperationalSummary.ReportingCustomerNumber,
+ dbo_OperationalSummary.OriginCity,
+ dbo_OperationalSummary.OriginState,
+ dbo_OperationalSummary.DestinationCity,
+ dbo_OperationalSummary.DestinationState,
+ dbo_OperationalSummary.TransportationMode;
+
+
+
+
+SELECT 
+[tbl Opportunities]!REPORTING_CUST_NBR & [tbl Opportunities]!BENE_CUST_NBR & [tbl Opportunities]!ORIGIN_CITY & [tbl Opportunities]!ORIGIN_STATE & [tbl Opportunities]!DEST_CITY & [tbl Opportunities]!DEST_STATE AS Lane,
+ [tbl Opportunities].OPP_NBR,
+ [tbl Opportunities].[IM_ Feasibility],
+ [tbl Opportunities].ORIGIN_MARKET_RAMP,
+ [tbl Opportunities].DEST_MARKET_RAMP,
+ [tbl Opportunities].REPORTING_CUST_NBR,
+ [tbl Opportunities].REPORTING_CUST_NAME,
+ [tbl Opportunities].CUST_NBR,
+ [tbl Opportunities].CUST_NAME,
+ [tbl Opportunities].BENE_CUST_NBR,
+ [tbl Opportunities].BENE_CUST_NAME,
+ [tbl Opportunities].MOST_RECENT_DATE,
+ [tbl Opportunities].SOURCE_REP,
+ [tbl Opportunities].SOURCE_REP_NAME,
+ [tbl Opportunities].WHOLESALE_FLAG,
+ [tbl Opportunities].ORIGIN_CITY,
+ [tbl Opportunities].ORIGIN_STATE,
+ [tbl Opportunities].ORIGIN_ZIP3,
+ [tbl Opportunities].ORIGIN_ZONE,
+ [tbl Zones].ZoneName AS [Origin Zone Name],
+ [tbl Opportunities].DEST_CITY,
+ [tbl Opportunities].DEST_STATE,
+ [tbl Opportunities].DEST_ZIP3,
+ [tbl Opportunities].DEST_ZONE,
+ [tbl Zones_1].ZoneName AS [Dest Zone Name],
+ [tbl Opportunities].RANK,
+ [tbl Opportunities].OSTATUS,
+ [tbl Opportunities].DSTATUS,
+ [tbl Opportunities].LAST_SHIP_DATE,
+ [tbl Opportunities].IML_LAST_SHIP_DATE,
+ [tbl Opportunities].OTR_LAST_SHIP_DATE,
+ Count([tbl Opportunities].OPP_NBR) AS [# of Opportunity lanes],
+ [tbl Opportunities].VOLUME_BEST AS [VOLUME-BEST],
+ [tbl Opportunities].IML_HISTORICAL_VOL AS [HIST IML VOLUME],
+ [tbl Opportunities].OTR_HISTORICAL_VOL AS [HIST OTR VOLUME],
+ [tbl Opportunities].MAX_VOLUME AS [VOLUME-MAX],
+ [tbl Opportunities].TOTAL_HISTORICAL_VOL AS [TOTAL HIST VOLUME],
+ ([tbl Opportunities]!MAX_VOLUME-[tbl Opportunities]!TOTAL_HISTORICAL_VOL) AS [NONINCUMBENT OPPTY VOLUME] 
+INTO 
+OPPTY_Data_Original IN 'C:\Users\john.kropf\Desktop\Market Understanding - OppDB Output.mdb'
+FROM 
+([tbl Opportunities] 
+LEFT JOIN 
+[tbl Zones] AS [tbl Zones_1] 
+ON 
+[tbl Opportunities].DEST_ZONE = [tbl Zones_1].Zone) 
+LEFT JOIN 
+[tbl Zones] 
+ON 
+[tbl Opportunities].ORIGIN_ZONE = [tbl Zones].Zone
+GROUP BY 
+[tbl Opportunities]!REPORTING_CUST_NBR & [tbl Opportunities]!BENE_CUST_NBR & [tbl Opportunities]!ORIGIN_CITY & [tbl Opportunities]!ORIGIN_STATE & [tbl Opportunities]!DEST_CITY & [tbl Opportunities]!DEST_STATE,
+ [tbl Opportunities].OPP_NBR,
+ [tbl Opportunities].[IM_ Feasibility],
+ [tbl Opportunities].ORIGIN_MARKET_RAMP,
+ [tbl Opportunities].DEST_MARKET_RAMP,
+ [tbl Opportunities].REPORTING_CUST_NBR,
+ [tbl Opportunities].REPORTING_CUST_NAME,
+ [tbl Opportunities].CUST_NBR,
+ [tbl Opportunities].CUST_NAME,
+ [tbl Opportunities].BENE_CUST_NBR,
+ [tbl Opportunities].BENE_CUST_NAME,
+ [tbl Opportunities].MOST_RECENT_DATE,
+ [tbl Opportunities].SOURCE_REP,
+ [tbl Opportunities].SOURCE_REP_NAME,
+ [tbl Opportunities].WHOLESALE_FLAG,
+ [tbl Opportunities].ORIGIN_CITY,
+ [tbl Opportunities].ORIGIN_STATE,
+ [tbl Opportunities].ORIGIN_ZIP3,
+ [tbl Opportunities].ORIGIN_ZONE,
+ [tbl Zones].ZoneName,
+ [tbl Opportunities].DEST_CITY,
+ [tbl Opportunities].DEST_STATE,
+ [tbl Opportunities].DEST_ZIP3,
+ [tbl Opportunities].DEST_ZONE,
+ [tbl Zones_1].ZoneName,
+ [tbl Opportunities].RANK,
+ [tbl Opportunities].OSTATUS,
+ [tbl Opportunities].DSTATUS,
+ [tbl Opportunities].LAST_SHIP_DATE,
+ [tbl Opportunities].IML_LAST_SHIP_DATE,
+ [tbl Opportunities].OTR_LAST_SHIP_DATE,
+ [tbl Opportunities].VOLUME_BEST,
+ [tbl Opportunities].IML_HISTORICAL_VOL,
+ [tbl Opportunities].OTR_HISTORICAL_VOL,
+ [tbl Opportunities].MAX_VOLUME,
+ [tbl Opportunities].TOTAL_HISTORICAL_VOL
+HAVING 
+((([tbl Opportunities].REPORTING_CUST_NBR)>99));

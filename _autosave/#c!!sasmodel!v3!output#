@@ -1,0 +1,4326 @@
+4097  proc contents data=f;
+4098  run;
+
+NOTE: PROCEDURE CONTENTS used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+4099  *options pagesize=80 linesize=80 pageno=1; *nodate ;
+4100
+4101  /* data _null_; */
+4102  /* startdate = date(); */
+4103  /* today = date(); */
+4104  /* *call symput('startdate',"'"||trim(left(put(startdate, date9.)))||"'");
+4104!  */
+4105  /* call symput('today',"'"||trim(left(put(today, date9.)))||"'"); */
+4106  /* call symput('startdate',input(strip(startdate),date9.); */
+4107  /* run; */
+4108
+4109  x 'cd c:\users\john.kropf\sas graphs'
+4109!                                      ;
+4110  options nodate pageno=1 linesize=80 pagesize=60 source compress=yes
+4110! replace=yes;
+4111
+4112  libname dwpa odbc dsn='dw_pa' schema=dbo;
+NOTE: Libref DWPA was successfully assigned as follows:
+      Engine:        ODBC
+      Physical Name: dw_pa
+4113  libname hublib 'c:\sasmodel\datasets';
+NOTE: Libref HUBLIB was successfully assigned as follows:
+      Engine:        V9
+      Physical Name: c:\sasmodel\datasets
+4114  libname out 'c:\sasmodel\output\';
+NOTE: Libref OUT was successfully assigned as follows:
+      Engine:        V9
+      Physical Name: c:\sasmodel\output
+4115  libname user 'c:\sasmodel\userlib\';
+NOTE: Libref USER was successfully assigned as follows:
+      Engine:        V9
+      Physical Name: c:\sasmodel\userlib
+4116
+4117  *proc printto print='c:\sasmodel\output\sample' new;
+4118  *proc printto print='c:\fire' new;
+4119  run;
+4120
+4121  /* **************************** */
+4122  /* define today macro variables */
+4123  /* **************************** */
+4124  *%let startdate= %sysevalf('29MAY2015'd);
+4125  *%let today = %sysevalf('29MAY2015'd);
+4126  %let startdate   = %sysfunc(date());
+4127  %let today       = %sysfunc(date());
+4128  %put &startdate;
+20279
+4129  %put &today;
+20279
+4130
+4131  /* **************************** */
+4132  /* define other macro variables */
+4133  /* **************************** */
+4134  %let cursupdays  = 2;    * number of days rail controlled (non-fleet)
+4134! boxes stay in Hub's control after CU;
+4135  %let fltsupdays  = 120;  * number of days fleet boxes are considered
+4135! supply - longer must be bad data;
+4136  %let turnsupdays = 120;  * if last event implies street turning, wait 120
+4136! days mzx before throwing out data;
+4137  %let transupdays = 120;  * if last event implies in rail transit, wait 120
+4137!  days mzx before throwing out data;
+4138  %let fcsthoriz   = 13;   * today plus 13 more days = 14 day forecast;
+4139  %let fcstoffset  = 0;    * if you want the forcst to start yesterday,
+4139! offset=1, etc.;
+4140  %let histrange   = 525;  * days of history for creating forecast;
+4141
+4142  /* **************************** */
+4143  /* **************************** */
+4144  /* **************************** */
+4145  /* **************************** */
+4146  /* **************************** */
+4147
+4148  %include "c:\sasmodel\v3\0_master.sas";
+NOTE: Libref DWPA was successfully assigned as follows:
+      Engine:        ODBC
+      Physical Name: dw_pa
+NOTE: Libref HUBLIB was successfully assigned as follows:
+      Engine:        V9
+      Physical Name: c:\sasmodel\datasets
+NOTE: Libref OUT was successfully assigned as follows:
+      Engine:        V9
+      Physical Name: c:\sasmodel\output
+NOTE: Libref USER was successfully assigned as follows:
+      Engine:        V9
+      Physical Name: c:\sasmodel\userlib
+20279
+20279
+NOTE: Compressing data set HUBLIB.ALLDATA decreased size by 28.00 percent.
+      Compressed is 7785 pages; un-compressed would require 10813 pages.
+NOTE: Table HUBLIB.ALLDATA created, with 1221751 rows and 58 columns.
+
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           5:46.87
+      cpu time            1:02.55
+
+
+
+NOTE: There were 1221751 observations read from the data set HUBLIB.ALLDATA.
+NOTE: The data set HUBLIB.ALLDATA has 1221751 observations and 59 variables.
+NOTE: Compressing data set HUBLIB.ALLDATA decreased size by 27.95 percent.
+      Compressed is 7860 pages; un-compressed would require 10909 pages.
+NOTE: DATA statement used (Total process time):
+      real time           31.42 seconds
+      cpu time            15.14 seconds
+
+
+
+NOTE: The infile 'c:\sasmodel\csvs\fcstods.csv' is:
+      Filename=c:\sasmodel\csvs\fcstods.csv,
+      RECFM=V,LRECL=32767,File Size (bytes)=4911,
+      Last Modified=26May2015:15:23:05,
+      Create Time=29Apr2015:09:57:51
+
+NOTE: 396 records were read from the infile 'c:\sasmodel\csvs\fcstods.csv'.
+      The minimum record length was 9.
+      The maximum record length was 11.
+NOTE: The data set HUBLIB.FCSTODS has 396 observations and 3 variables.
+NOTE: Compressing data set HUBLIB.FCSTODS increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.07 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: There were 396 observations read from the data set HUBLIB.FCSTODS.
+NOTE: The data set HUBLIB.FCSTODS has 396 observations and 3 variables.
+NOTE: Compressing data set HUBLIB.FCSTODS increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: The infile 'c:\sasmodel\csvs\pool.csv' is:
+      Filename=c:\sasmodel\csvs\pool.csv,
+      RECFM=V,LRECL=32767,File Size (bytes)=42,
+      Last Modified=28Apr2015:12:16:46,
+      Create Time=28Apr2015:12:16:35
+
+NOTE: 0 records were read from the infile 'c:\sasmodel\csvs\pool.csv'.
+NOTE: The data set HUBLIB.POOL has 0 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: The infile 'c:\sasmodel\csvs\holidays.csv' is:
+      Filename=c:\sasmodel\csvs\holidays.csv,
+      RECFM=V,LRECL=32767,File Size (bytes)=1196,
+      Last Modified=05May2015:17:23:38,
+      Create Time=28Apr2015:11:12:39
+
+NOTE: 40 records were read from the infile 'c:\sasmodel\csvs\holidays.csv'.
+      The minimum record length was 22.
+      The maximum record length was 40.
+NOTE: The data set HUBLIB.HOLIDAYS has 40 observations and 3 variables.
+NOTE: Compressing data set HUBLIB.HOLIDAYS increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: There were 40 observations read from the data set HUBLIB.HOLIDAYS.
+NOTE: The data set HUBLIB.HOLIDAYS has 40 observations and 3 variables.
+NOTE: Compressing data set HUBLIB.HOLIDAYS increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: The infile 'c:\sasmodel\csvs\autoaccept.csv' is:
+      Filename=c:\sasmodel\csvs\autoaccept.csv,
+      RECFM=V,LRECL=32767,File Size (bytes)=44,
+      Last Modified=28Apr2015:12:25:14,
+      Create Time=28Apr2015:12:25:09
+
+NOTE: 0 records were read from the infile 'c:\sasmodel\csvs\autoaccept.csv'.
+NOTE: The data set HUBLIB.AUTOACCEPT has 0 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 0 observations read from the data set HUBLIB.AUTOACCEPT.
+NOTE: The data set HUBLIB.AUTOACCEPT has 0 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: The infile 'c:\sasmodel\csvs\hubu.csv' is:
+      Filename=c:\sasmodel\csvs\hubu.csv,
+      RECFM=V,LRECL=32767,File Size (bytes)=38,
+      Last Modified=28Apr2015:12:25:57,
+      Create Time=28Apr2015:12:25:53
+
+NOTE: 0 records were read from the infile 'c:\sasmodel\csvs\hubu.csv'.
+NOTE: The data set HUBLIB.HUBU has 0 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: Compression was disabled for data set HUBLIB.OUTNETWORKEQUIPMENT because
+      compression overhead would increase the size of the data set.
+NOTE: The infile 'c:\sasmodel\csvs\outnetworkequipment.csv' is:
+      Filename=c:\sasmodel\csvs\outnetworkequipment.csv,
+      RECFM=V,LRECL=32767,File Size (bytes)=24,
+      Last Modified=28Apr2015:12:29:33,
+      Create Time=28Apr2015:12:29:32
+
+NOTE: 0 records were read from the infile
+      'c:\sasmodel\csvs\outnetworkequipment.csv'.
+NOTE: The data set HUBLIB.OUTNETWORKEQUIPMENT has 0 observations and 3
+      variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.07 seconds
+      cpu time            0.07 seconds
+
+
+
+NOTE: Numeric values have been converted to character
+      values at the places given by: (Line):(Column).
+      4587:35   4588:80   4589:99
+NOTE: Character values have been converted to numeric
+      values at the places given by: (Line):(Column).
+      4587:24
+NOTE: There were 1221751 observations read from the data set HUBLIB.ALLDATA.
+NOTE: The data set USER.ALLDATAPLUS has 1221751 observations and 67 variables.
+NOTE: Compressing data set USER.ALLDATAPLUS decreased size by 29.41 percent.
+      Compressed is 9690 pages; un-compressed would require 13728 pages.
+NOTE: DATA statement used (Total process time):
+      real time           53.36 seconds
+      cpu time            23.13 seconds
+
+
+
+NOTE: Missing values were generated as a result of performing an operation on
+      missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      4384 at 4607:14
+NOTE: There were 1221751 observations read from the data set USER.ALLDATAPLUS.
+NOTE: The data set HUBLIB.ALLDATAPLUSALL has 1191459 observations and 69
+      variables.
+NOTE: Compressing data set HUBLIB.ALLDATAPLUSALL decreased size by 28.82
+      percent.
+      Compressed is 9638 pages; un-compressed would require 13540 pages.
+NOTE: DATA statement used (Total process time):
+      real time           55.12 seconds
+      cpu time            21.87 seconds
+
+
+
+NOTE: There were 1191459 observations read from the data set
+      HUBLIB.ALLDATAPLUSALL.
+NOTE: The data set HUBLIB.ALLDATAPLUS has 1110062 observations and 69 variables.
+NOTE: Compressing data set HUBLIB.ALLDATAPLUS decreased size by 28.69 percent.
+      Compressed is 8996 pages; un-compressed would require 12615 pages.
+NOTE: DATA statement used (Total process time):
+      real time           48.42 seconds
+      cpu time            18.86 seconds
+
+
+
+NOTE: There were 1191459 observations read from the data set
+      HUBLIB.ALLDATAPLUSALL.
+NOTE: The data set HUBLIB.REPO has 81397 observations and 69 variables.
+NOTE: Compressing data set HUBLIB.REPO decreased size by 30.67 percent.
+      Compressed is 642 pages; un-compressed would require 926 pages.
+NOTE: DATA statement used (Total process time):
+      real time           7.53 seconds
+      cpu time            7.00 seconds
+
+
+
+NOTE: There were 396 observations read from the data set HUBLIB.FCSTODS.
+NOTE: The data set USER.INORIGS has 34 observations and 3 variables.
+NOTE: Compressing data set USER.INORIGS increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 1110062 observations read from the data set HUBLIB.ALLDATAPLUS.
+NOTE: The data set USER.ALLDATAPLUS has 1104605 observations and 69 variables.
+NOTE: Compressing data set USER.ALLDATAPLUS decreased size by 28.67 percent.
+      Compressed is 8954 pages; un-compressed would require 12553 pages.
+NOTE: DATA statement used (Total process time):
+      real time           41.39 seconds
+      cpu time            17.98 seconds
+
+
+
+NOTE: There were 1104605 observations read from the data set USER.ALLDATAPLUS.
+NOTE: The data set USER.ALLDATAPLUS has 1104605 observations and 69 variables.
+NOTE: Compressing data set USER.ALLDATAPLUS decreased size by 28.68 percent.
+      Compressed is 8953 pages; un-compressed would require 12553 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           49.12 seconds
+      cpu time            20.62 seconds
+
+
+
+NOTE: There were 1104605 observations read from the data set USER.ALLDATAPLUS.
+NOTE: There were 34 observations read from the data set USER.INORIGS.
+NOTE: The data set HUBLIB.MAJORORIG has 1046743 observations and 71 variables.
+NOTE: Compressing data set HUBLIB.MAJORORIG decreased size by 29.10 percent.
+      Compressed is 8630 pages; un-compressed would require 12172 pages.
+NOTE: The data set HUBLIB.MINORORIG has 57862 observations and 71 variables.
+NOTE: Compressing data set HUBLIB.MINORORIG decreased size by 29.57 percent.
+      Compressed is 474 pages; un-compressed would require 673 pages.
+NOTE: DATA statement used (Total process time):
+      real time           40.04 seconds
+      cpu time            16.80 seconds
+
+
+
+NOTE: There were 1046743 observations read from the data set HUBLIB.MAJORORIG.
+NOTE: The data set HUBLIB.MAJORORIG has 1046743 observations and 71 variables.
+NOTE: Compressing data set HUBLIB.MAJORORIG decreased size by 29.11 percent.
+      Compressed is 8629 pages; un-compressed would require 12172 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           31.76 seconds
+      cpu time            19.00 seconds
+
+
+
+NOTE: There were 1046743 observations read from the data set HUBLIB.MAJORORIG.
+NOTE: The data set HUBLIB.MAJORORIG has 1046743 observations and 71 variables.
+NOTE: Compressing data set HUBLIB.MAJORORIG decreased size by 29.11 percent.
+      Compressed is 8629 pages; un-compressed would require 12172 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           37.86 seconds
+      cpu time            18.00 seconds
+
+
+
+NOTE: There were 1046743 observations read from the data set HUBLIB.MAJORORIG.
+NOTE: The data set USER.MAJORORIGSUM has 885605 observations and 7 variables.
+NOTE: Compressing data set USER.MAJORORIGSUM decreased size by 30.17 percent.
+      Compressed is 530 pages; un-compressed would require 759 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           17.20 seconds
+      cpu time            8.51 seconds
+
+
+
+NOTE: There were 885605 observations read from the data set USER.MAJORORIGSUM.
+NOTE: The data set USER.MAJORORIGSUM2 has 177121 observations and 5 variables.
+NOTE: Compressing data set USER.MAJORORIGSUM2 decreased size by 15.60 percent.
+      Compressed is 92 pages; un-compressed would require 109 pages.
+NOTE: DATA statement used (Total process time):
+      real time           1.01 seconds
+      cpu time            0.99 seconds
+
+
+
+NOTE: There were 177121 observations read from the data set USER.MAJORORIGSUM2.
+NOTE: The data set USER.MAJORORIGSUM3 has 5095 observations and 6 variables.
+NOTE: Compressing data set USER.MAJORORIGSUM3 decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.25 seconds
+      cpu time            0.24 seconds
+
+
+
+NOTE: There were 5095 observations read from the data set USER.MAJORORIGSUM3.
+NOTE: The data set USER.MAJORORIGSUM4 has 1019 observations and 4 variables.
+NOTE: Compressing data set USER.MAJORORIGSUM4 increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 1019 observations read from the data set USER.MAJORORIGSUM4.
+NOTE: The data set USER.MAJORORIGSUM4 has 1019 observations and 4 variables.
+NOTE: Compressing data set USER.MAJORORIGSUM4 increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.19 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 1046743 observations read from the data set HUBLIB.MAJORORIG.
+NOTE: There were 396 observations read from the data set HUBLIB.FCSTODS.
+NOTE: The data set HUBLIB.MAJORORIGFCSTDATA has 1046743 observations and 72
+      variables.
+NOTE: Compressing data set HUBLIB.MAJORORIGFCSTDATA decreased size by 29.57
+      percent.
+      Compressed is 8673 pages; un-compressed would require 12315 pages.
+NOTE: DATA statement used (Total process time):
+      real time           29.64 seconds
+      cpu time            16.20 seconds
+
+
+
+NOTE: There were 1046743 observations read from the data set
+      HUBLIB.MAJORORIGFCSTDATA.
+NOTE: The data set HUBLIB.MINORODSUPPLYDATA has 103800 observations and 72
+      variables.
+NOTE: Compressing data set HUBLIB.MINORODSUPPLYDATA decreased size by 30.20
+      percent.
+      Compressed is 853 pages; un-compressed would require 1222 pages.
+NOTE: DATA statement used (Total process time):
+      real time           11.32 seconds
+      cpu time            5.63 seconds
+
+
+
+NOTE: There were 1046743 observations read from the data set
+      HUBLIB.MAJORORIGFCSTDATA.
+NOTE: The data set HUBLIB.MAJORORIGFCSTDATA has 1046743 observations and 72
+      variables.
+NOTE: Compressing data set HUBLIB.MAJORORIGFCSTDATA decreased size by 29.57
+      percent.
+      Compressed is 8674 pages; un-compressed would require 12315 pages.
+NOTE: DATA statement used (Total process time):
+      real time           31.20 seconds
+      cpu time            15.50 seconds
+
+
+
+NOTE: There were 1046743 observations read from the data set
+      HUBLIB.MAJORORIGFCSTDATA.
+NOTE: The data set HUBLIB.MAJORORIGFCSTDATA has 1046743 observations and 72
+      variables.
+NOTE: Compressing data set HUBLIB.MAJORORIGFCSTDATA decreased size by 29.57
+      percent.
+      Compressed is 8673 pages; un-compressed would require 12315 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           36.51 seconds
+      cpu time            18.22 seconds
+
+
+
+NOTE: There were 1046743 observations read from the data set
+      HUBLIB.MAJORORIGFCSTDATA.
+NOTE: The data set HUBLIB.RMPMKTFCSTMKTGROUPS has 1082 observations and 5
+      variables.
+NOTE: Compressing data set HUBLIB.RMPMKTFCSTMKTGROUPS increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           15.04 seconds
+      cpu time            4.72 seconds
+
+
+
+NOTE: There were 1046743 observations read from the data set
+      HUBLIB.MAJORORIGFCSTDATA.
+NOTE: The data set HUBLIB.MAJORORIGFCSTDATA has 1046743 observations and 72
+      variables.
+NOTE: Compressing data set HUBLIB.MAJORORIGFCSTDATA decreased size by 29.57
+      percent.
+      Compressed is 8674 pages; un-compressed would require 12315 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           29.24 seconds
+      cpu time            17.45 seconds
+
+
+
+NOTE: The data set USER.MAJORORIGSUM2PT5 has 143185 observations and 4
+      variables.
+NOTE: Compressing data set USER.MAJORORIGSUM2PT5 decreased size by 0.00
+      percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           19.18 seconds
+      cpu time            9.93 seconds
+
+
+
+ALBNY CHIL 31JAN2014 0
+ALBNY CHIL 09JUL2015 0
+ALBNY CHIN 31JAN2014 0
+ALBNY CHIN 09JUL2015 0
+ALBNY CHMET 31JAN2014 0
+ALBNY CHMET 09JUL2015 0
+ALBNY CHMI 31JAN2014 0
+ALBNY CHMI 09JUL2015 0
+ALBNY CHOH 31JAN2014 0
+ALBNY CHOH 09JUL2015 0
+ALBNY CHWI 31JAN2014 0
+ALBNY CHWI 09JUL2015 0
+ALBNY DALL 31JAN2014 0
+ALBNY DALL 09JUL2015 0
+ALBNY DALR 31JAN2014 0
+ALBNY DALR 09JUL2015 0
+ALBNY ZZOTH 31JAN2014 0
+ALBNY ZZOTH 09JUL2015 0
+ATLAL CHIL 31JAN2014 0
+ATLAL CHIL 09JUL2015 0
+ATLAL CHIN 31JAN2014 0
+ATLAL CHIN 09JUL2015 0
+ATLAL CHMET 31JAN2014 0
+ATLAL CHMET 09JUL2015 0
+ATLAL CHMI 31JAN2014 0
+ATLAL CHMI 09JUL2015 0
+ATLAL CHOH 31JAN2014 0
+ATLAL CHOH 09JUL2015 0
+ATLAL CHWI 31JAN2014 0
+ATLAL CHWI 09JUL2015 0
+ATLAL DALL 31JAN2014 0
+ATLAL DALL 09JUL2015 0
+ATLAL DALR 31JAN2014 0
+ATLAL DALR 09JUL2015 0
+ATLAL ERAIL 31JAN2014 0
+ATLAL ERAIL 09JUL2015 0
+ATLAL HBG 31JAN2014 0
+ATLAL HBG 09JUL2015 0
+ATLAL KANCY 31JAN2014 0
+ATLAL KANCY 09JUL2015 0
+ATLAL LOSAN 31JAN2014 0
+ATLAL LOSAN 09JUL2015 0
+ATLAL MIAMI 31JAN2014 0
+ATLAL MIAMI 09JUL2015 0
+ATLAL PHILA 31JAN2014 0
+ATLAL PHILA 09JUL2015 0
+ATLAL PORTL 31JAN2014 0
+ATLAL PORTL 09JUL2015 0
+ATLAL SALAC 31JAN2014 0
+ATLAL SALAC 09JUL2015 0
+ATLAL SEATL 31JAN2014 0
+ATLAL SEATL 09JUL2015 0
+ATLAL STKTN 31JAN2014 0
+ATLAL STKTN 09JUL2015 0
+ATLAL ZZOTH 31JAN2014 0
+ATLAL ZZOTH 09JUL2015 0
+ATLAR CHIL 31JAN2014 0
+ATLAR CHIL 09JUL2015 0
+ATLAR CHIN 31JAN2014 0
+ATLAR CHIN 09JUL2015 0
+ATLAR CHMET 31JAN2014 0
+ATLAR CHMET 09JUL2015 0
+ATLAR CHMI 31JAN2014 0
+ATLAR CHMI 09JUL2015 0
+ATLAR CHOH 31JAN2014 0
+ATLAR CHOH 09JUL2015 0
+ATLAR CHWI 31JAN2014 0
+ATLAR CHWI 09JUL2015 0
+ATLAR DALL 31JAN2014 0
+ATLAR DALL 09JUL2015 0
+ATLAR DALR 31JAN2014 0
+ATLAR DALR 09JUL2015 0
+ATLAR ERAIL 31JAN2014 0
+ATLAR ERAIL 09JUL2015 0
+ATLAR HBG 31JAN2014 0
+ATLAR HBG 09JUL2015 0
+ATLAR KANCY 31JAN2014 0
+ATLAR KANCY 09JUL2015 0
+ATLAR LOSAN 31JAN2014 0
+ATLAR LOSAN 09JUL2015 0
+ATLAR MIAMI 31JAN2014 0
+ATLAR MIAMI 09JUL2015 0
+ATLAR PHILA 31JAN2014 0
+ATLAR PHILA 09JUL2015 0
+ATLAR PORTL 31JAN2014 0
+ATLAR PORTL 09JUL2015 0
+ATLAR SALAC 31JAN2014 0
+ATLAR SALAC 09JUL2015 0
+ATLAR SEATL 31JAN2014 0
+ATLAR SEATL 09JUL2015 0
+ATLAR STKTN 31JAN2014 0
+ATLAR STKTN 09JUL2015 0
+ATLAR ZZOTH 31JAN2014 0
+ATLAR ZZOTH 09JUL2015 0
+BHAM BINDL 31JAN2014 0
+BHAM BINDL 09JUL2015 0
+BHAM ERAIL 31JAN2014 0
+BHAM ERAIL 09JUL2015 0
+BHAM ZZOTH 31JAN2014 0
+BHAM ZZOTH 09JUL2015 0
+BINDL CHIL 31JAN2014 0
+BINDL CHIL 09JUL2015 0
+BINDL CHMET 31JAN2014 0
+BINDL CHMET 09JUL2015 0
+BINDL CHWI 31JAN2014 0
+BINDL CHWI 09JUL2015 0
+BINDL LOSAN 31JAN2014 0
+BINDL LOSAN 09JUL2015 0
+BINDL ZZOTH 31JAN2014 0
+BINDL ZZOTH 09JUL2015 0
+BOST CHIL 31JAN2014 0
+BOST CHIL 09JUL2015 0
+BOST CHIN 31JAN2014 0
+BOST CHIN 09JUL2015 0
+BOST CHMET 31JAN2014 0
+BOST CHMET 09JUL2015 0
+BOST CHMI 31JAN2014 0
+BOST CHMI 09JUL2015 0
+BOST CHWI 31JAN2014 0
+BOST CHWI 09JUL2015 0
+BOST ZZOTH 31JAN2014 0
+BOST ZZOTH 09JUL2015 0
+CHIL ALBNY 31JAN2014 0
+CHIL ALBNY 09JUL2015 0
+CHIL ATLAL 31JAN2014 0
+CHIL ATLAL 09JUL2015 0
+CHIL ATLAR 31JAN2014 0
+CHIL ATLAR 09JUL2015 0
+CHIL BOST 31JAN2014 0
+CHIL BOST 09JUL2015 0
+CHIL CHLTE 31JAN2014 0
+CHIL CHLTE 09JUL2015 0
+CHIL DALL 31JAN2014 0
+CHIL DALL 09JUL2015 0
+CHIL DALR 31JAN2014 0
+CHIL DALR 09JUL2015 0
+CHIL ERAIL 31JAN2014 0
+CHIL ERAIL 09JUL2015 0
+CHIL HBG 31JAN2014 0
+CHIL HBG 09JUL2015 0
+CHIL HUSTN 31JAN2014 0
+CHIL HUSTN 09JUL2015 0
+CHIL JACVL 31JAN2014 0
+CHIL JACVL 09JUL2015 0
+CHIL LARED 31JAN2014 0
+CHIL LARED 09JUL2015 0
+CHIL LOSAN 31JAN2014 0
+CHIL LOSAN 09JUL2015 0
+CHIL MIAMI 31JAN2014 0
+CHIL MIAMI 09JUL2015 0
+CHIL NRFLK 31JAN2014 0
+CHIL NRFLK 09JUL2015 0
+CHIL ORLND 31JAN2014 0
+CHIL ORLND 09JUL2015 0
+CHIL PHILA 31JAN2014 0
+CHIL PHILA 09JUL2015 0
+CHIL PORTL 31JAN2014 0
+CHIL PORTL 09JUL2015 0
+CHIL SALAC 31JAN2014 0
+CHIL SALAC 09JUL2015 0
+CHIL SAVAN 31JAN2014 0
+CHIL SAVAN 09JUL2015 0
+CHIL SEATL 31JAN2014 0
+CHIL SEATL 09JUL2015 0
+CHIL STKTN 31JAN2014 0
+CHIL STKTN 09JUL2015 0
+CHIL ZZOTH 31JAN2014 0
+CHIL ZZOTH 09JUL2015 0
+CHIN ALBNY 31JAN2014 0
+CHIN ALBNY 09JUL2015 0
+CHIN ATLAL 31JAN2014 0
+CHIN ATLAL 09JUL2015 0
+CHIN ATLAR 31JAN2014 0
+CHIN ATLAR 09JUL2015 0
+CHIN BOST 31JAN2014 0
+CHIN BOST 09JUL2015 0
+CHIN DALL 31JAN2014 0
+CHIN DALL 09JUL2015 0
+CHIN DALR 31JAN2014 0
+CHIN DALR 09JUL2015 0
+CHIN ERAIL 31JAN2014 0
+CHIN ERAIL 09JUL2015 0
+CHIN HBG 31JAN2014 0
+CHIN HBG 09JUL2015 0
+CHIN HUSTN 31JAN2014 0
+CHIN HUSTN 09JUL2015 0
+CHIN JACVL 31JAN2014 0
+CHIN JACVL 09JUL2015 0
+CHIN LARED 31JAN2014 0
+CHIN LARED 09JUL2015 0
+CHIN LOSAN 31JAN2014 0
+CHIN LOSAN 09JUL2015 0
+CHIN MIAMI 31JAN2014 0
+CHIN MIAMI 09JUL2015 0
+CHIN NRFLK 31JAN2014 0
+CHIN NRFLK 09JUL2015 0
+CHIN ORLND 31JAN2014 0
+CHIN ORLND 09JUL2015 0
+CHIN PHILA 31JAN2014 0
+CHIN PHILA 09JUL2015 0
+CHIN PORTL 31JAN2014 0
+CHIN PORTL 09JUL2015 0
+CHIN SALAC 31JAN2014 0
+CHIN SALAC 09JUL2015 0
+CHIN SEATL 31JAN2014 0
+CHIN SEATL 09JUL2015 0
+CHIN STKTN 31JAN2014 0
+CHIN STKTN 09JUL2015 0
+CHIN ZZOTH 31JAN2014 0
+CHIN ZZOTH 09JUL2015 0
+CHLTE CHIL 31JAN2014 0
+CHLTE CHIL 09JUL2015 0
+CHLTE CHIN 31JAN2014 0
+CHLTE CHIN 09JUL2015 0
+CHLTE CHMET 31JAN2014 0
+CHLTE CHMET 09JUL2015 0
+CHLTE CHWI 31JAN2014 0
+CHLTE CHWI 09JUL2015 0
+CHLTE DALL 31JAN2014 0
+CHLTE DALL 09JUL2015 0
+CHLTE DALR 31JAN2014 0
+CHLTE DALR 09JUL2015 0
+CHLTE LOSAN 31JAN2014 0
+CHLTE LOSAN 09JUL2015 0
+CHLTE PORTL 31JAN2014 0
+CHLTE PORTL 09JUL2015 0
+CHLTE SALAC 31JAN2014 0
+CHLTE SALAC 09JUL2015 0
+CHLTE STKTN 31JAN2014 0
+CHLTE STKTN 09JUL2015 0
+CHLTE ZZOTH 31JAN2014 0
+CHLTE ZZOTH 09JUL2015 0
+CHMET ALBNY 31JAN2014 0
+CHMET ALBNY 09JUL2015 0
+CHMET ATLAL 31JAN2014 0
+CHMET ATLAL 09JUL2015 0
+CHMET ATLAR 31JAN2014 0
+CHMET ATLAR 09JUL2015 0
+CHMET BOST 31JAN2014 0
+CHMET BOST 09JUL2015 0
+CHMET CHLTE 31JAN2014 0
+CHMET CHLTE 09JUL2015 0
+CHMET DALL 31JAN2014 0
+CHMET DALL 09JUL2015 0
+CHMET DALR 31JAN2014 0
+CHMET DALR 09JUL2015 0
+CHMET ERAIL 31JAN2014 0
+CHMET ERAIL 09JUL2015 0
+CHMET HBG 31JAN2014 0
+CHMET HBG 09JUL2015 0
+CHMET HUSTN 31JAN2014 0
+CHMET HUSTN 09JUL2015 0
+CHMET JACVL 31JAN2014 0
+CHMET JACVL 09JUL2015 0
+CHMET LARED 31JAN2014 0
+CHMET LARED 09JUL2015 0
+CHMET LOSAN 31JAN2014 0
+CHMET LOSAN 09JUL2015 0
+CHMET MEMPH 31JAN2014 0
+CHMET MEMPH 09JUL2015 0
+CHMET MIAMI 31JAN2014 0
+CHMET MIAMI 09JUL2015 0
+CHMET NRFLK 31JAN2014 0
+CHMET NRFLK 09JUL2015 0
+CHMET ORLND 31JAN2014 0
+CHMET ORLND 09JUL2015 0
+CHMET PHILA 31JAN2014 0
+CHMET PHILA 09JUL2015 0
+CHMET PORTL 31JAN2014 0
+CHMET PORTL 09JUL2015 0
+CHMET SALAC 31JAN2014 0
+CHMET SALAC 09JUL2015 0
+CHMET SAVAN 31JAN2014 0
+CHMET SAVAN 09JUL2015 0
+CHMET SEATL 31JAN2014 0
+CHMET SEATL 09JUL2015 0
+CHMET STKTN 31JAN2014 0
+CHMET STKTN 09JUL2015 0
+CHMET ZZOTH 31JAN2014 0
+CHMET ZZOTH 09JUL2015 0
+CHMI ALBNY 31JAN2014 0
+CHMI ALBNY 09JUL2015 0
+CHMI ATLAL 31JAN2014 0
+CHMI ATLAL 09JUL2015 0
+CHMI ATLAR 31JAN2014 0
+CHMI ATLAR 09JUL2015 0
+CHMI BOST 31JAN2014 0
+CHMI BOST 09JUL2015 0
+CHMI CHLTE 31JAN2014 0
+CHMI CHLTE 09JUL2015 0
+CHMI DALL 31JAN2014 0
+CHMI DALL 09JUL2015 0
+CHMI ERAIL 31JAN2014 0
+CHMI ERAIL 09JUL2015 0
+CHMI HBG 31JAN2014 0
+CHMI HBG 09JUL2015 0
+CHMI HUSTN 31JAN2014 0
+CHMI HUSTN 09JUL2015 0
+CHMI JACVL 31JAN2014 0
+CHMI JACVL 09JUL2015 0
+CHMI LOSAN 31JAN2014 0
+CHMI LOSAN 09JUL2015 0
+CHMI MIAMI 31JAN2014 0
+CHMI MIAMI 09JUL2015 0
+CHMI ORLND 31JAN2014 0
+CHMI ORLND 09JUL2015 0
+CHMI PHILA 31JAN2014 0
+CHMI PHILA 09JUL2015 0
+CHMI PORTL 31JAN2014 0
+CHMI PORTL 09JUL2015 0
+CHMI SALAC 31JAN2014 0
+CHMI SALAC 09JUL2015 0
+CHMI SAVAN 31JAN2014 0
+CHMI SAVAN 09JUL2015 0
+CHMI SEATL 31JAN2014 0
+CHMI SEATL 09JUL2015 0
+CHMI STKTN 31JAN2014 0
+CHMI STKTN 09JUL2015 0
+CHMI ZZOTH 31JAN2014 0
+CHMI ZZOTH 09JUL2015 0
+CHOH ALBNY 31JAN2014 0
+CHOH ALBNY 09JUL2015 0
+CHOH ATLAL 31JAN2014 0
+CHOH ATLAL 09JUL2015 0
+CHOH ATLAR 31JAN2014 0
+CHOH ATLAR 09JUL2015 0
+CHOH BOST 31JAN2014 0
+CHOH BOST 09JUL2015 0
+CHOH DALL 31JAN2014 0
+CHOH DALL 09JUL2015 0
+CHOH DALR 31JAN2014 0
+CHOH DALR 09JUL2015 0
+CHOH ERAIL 31JAN2014 0
+CHOH ERAIL 09JUL2015 0
+CHOH HUSTN 31JAN2014 0
+CHOH HUSTN 09JUL2015 0
+CHOH JACVL 31JAN2014 0
+CHOH JACVL 09JUL2015 0
+CHOH LARED 31JAN2014 0
+CHOH LARED 09JUL2015 0
+CHOH LOSAN 31JAN2014 0
+CHOH LOSAN 09JUL2015 0
+CHOH MIAMI 31JAN2014 0
+CHOH MIAMI 09JUL2015 0
+CHOH ORLND 31JAN2014 0
+CHOH ORLND 09JUL2015 0
+CHOH PORTL 31JAN2014 0
+CHOH PORTL 09JUL2015 0
+CHOH SALAC 31JAN2014 0
+CHOH SALAC 09JUL2015 0
+CHOH SEATL 31JAN2014 0
+CHOH SEATL 09JUL2015 0
+CHOH STKTN 31JAN2014 0
+CHOH STKTN 09JUL2015 0
+CHOH ZZOTH 31JAN2014 0
+CHOH ZZOTH 09JUL2015 0
+CHWI ALBNY 31JAN2014 0
+CHWI ALBNY 09JUL2015 0
+CHWI ATLA 31JAN2014 0
+CHWI ATLA 09JUL2015 0
+CHWI ATLAL 31JAN2014 0
+CHWI ATLAL 09JUL2015 0
+CHWI ATLAR 31JAN2014 0
+CHWI ATLAR 09JUL2015 0
+CHWI BOST 31JAN2014 0
+CHWI BOST 09JUL2015 0
+CHWI CHLTE 31JAN2014 0
+CHWI CHLTE 09JUL2015 0
+CHWI DALL 31JAN2014 0
+CHWI DALL 09JUL2015 0
+CHWI DALR 31JAN2014 0
+CHWI DALR 09JUL2015 0
+CHWI ERAIL 31JAN2014 0
+CHWI ERAIL 09JUL2015 0
+CHWI HBG 31JAN2014 0
+CHWI HBG 09JUL2015 0
+CHWI HUSTN 31JAN2014 0
+CHWI HUSTN 09JUL2015 0
+CHWI JACVL 31JAN2014 0
+CHWI JACVL 09JUL2015 0
+CHWI LARED 31JAN2014 0
+CHWI LARED 09JUL2015 0
+CHWI LOSAN 31JAN2014 0
+CHWI LOSAN 09JUL2015 0
+CHWI MEMPH 31JAN2014 0
+CHWI MEMPH 09JUL2015 0
+CHWI MIAMI 31JAN2014 0
+CHWI MIAMI 09JUL2015 0
+CHWI NRFLK 31JAN2014 0
+CHWI NRFLK 09JUL2015 0
+CHWI ORLND 31JAN2014 0
+CHWI ORLND 09JUL2015 0
+CHWI PHILA 31JAN2014 0
+CHWI PHILA 09JUL2015 0
+CHWI PORTL 31JAN2014 0
+CHWI PORTL 09JUL2015 0
+CHWI SALAC 31JAN2014 0
+CHWI SALAC 09JUL2015 0
+CHWI SAVAN 31JAN2014 0
+CHWI SAVAN 09JUL2015 0
+CHWI SEATL 31JAN2014 0
+CHWI SEATL 09JUL2015 0
+CHWI STKTN 31JAN2014 0
+CHWI STKTN 09JUL2015 0
+CHWI ZZOTH 31JAN2014 0
+CHWI ZZOTH 09JUL2015 0
+CINTI JACVL 31JAN2014 0
+CINTI JACVL 09JUL2015 0
+CINTI ZZOTH 31JAN2014 0
+CINTI ZZOTH 09JUL2015 0
+DALAS BINDL 31JAN2014 0
+DALAS BINDL 09JUL2015 0
+DALAS LOSAN 31JAN2014 0
+DALAS LOSAN 09JUL2015 0
+DALAS PHILA 31JAN2014 0
+DALAS PHILA 09JUL2015 0
+DALAS ZZOTH 31JAN2014 0
+DALAS ZZOTH 09JUL2015 0
+DALL BINDL 31JAN2014 0
+DALL BINDL 09JUL2015 0
+DALL CHIL 31JAN2014 0
+DALL CHIL 09JUL2015 0
+DALL CHIN 31JAN2014 0
+DALL CHIN 09JUL2015 0
+DALL CHMET 31JAN2014 0
+DALL CHMET 09JUL2015 0
+DALL CHMI 31JAN2014 0
+DALL CHMI 09JUL2015 0
+DALL CHOH 31JAN2014 0
+DALL CHOH 09JUL2015 0
+DALL CHWI 31JAN2014 0
+DALL CHWI 09JUL2015 0
+DALL ERAIL 31JAN2014 0
+DALL ERAIL 09JUL2015 0
+DALL HBG 31JAN2014 0
+DALL HBG 09JUL2015 0
+DALL JACVL 31JAN2014 0
+DALL JACVL 09JUL2015 0
+DALL LOSAN 31JAN2014 0
+DALL LOSAN 09JUL2015 0
+DALL PHILA 31JAN2014 0
+DALL PHILA 09JUL2015 0
+DALL PORTL 31JAN2014 0
+DALL PORTL 09JUL2015 0
+DALL SEATL 31JAN2014 0
+DALL SEATL 09JUL2015 0
+DALL STKTN 31JAN2014 0
+DALL STKTN 09JUL2015 0
+DALL ZZOTH 31JAN2014 0
+DALL ZZOTH 09JUL2015 0
+DALR BINDL 31JAN2014 0
+DALR BINDL 09JUL2015 0
+DALR CHIL 31JAN2014 0
+DALR CHIL 09JUL2015 0
+DALR CHIN 31JAN2014 0
+DALR CHIN 09JUL2015 0
+DALR CHMET 31JAN2014 0
+DALR CHMET 09JUL2015 0
+DALR CHMI 31JAN2014 0
+DALR CHMI 09JUL2015 0
+DALR CHOH 31JAN2014 0
+DALR CHOH 09JUL2015 0
+DALR CHWI 31JAN2014 0
+DALR CHWI 09JUL2015 0
+DALR ERAIL 31JAN2014 0
+DALR ERAIL 09JUL2015 0
+DALR HBG 31JAN2014 0
+DALR HBG 09JUL2015 0
+DALR JACVL 31JAN2014 0
+DALR JACVL 09JUL2015 0
+DALR LOSAN 31JAN2014 0
+DALR LOSAN 09JUL2015 0
+DALR PHILA 31JAN2014 0
+DALR PHILA 09JUL2015 0
+DALR PORTL 31JAN2014 0
+DALR PORTL 09JUL2015 0
+DALR SEATL 31JAN2014 0
+DALR SEATL 09JUL2015 0
+DALR STKTN 31JAN2014 0
+DALR STKTN 09JUL2015 0
+DALR ZZOTH 31JAN2014 0
+DALR ZZOTH 09JUL2015 0
+ERAIL ATLAL 31JAN2014 0
+ERAIL ATLAL 09JUL2015 0
+ERAIL ATLAR 31JAN2014 0
+ERAIL ATLAR 09JUL2015 0
+ERAIL BHAM 31JAN2014 0
+ERAIL BHAM 09JUL2015 0
+ERAIL CHIL 31JAN2014 0
+ERAIL CHIL 09JUL2015 0
+ERAIL CHIN 31JAN2014 0
+ERAIL CHIN 09JUL2015 0
+ERAIL CHMET 31JAN2014 0
+ERAIL CHMET 09JUL2015 0
+ERAIL CHOH 31JAN2014 0
+ERAIL CHOH 09JUL2015 0
+ERAIL CHWI 31JAN2014 0
+ERAIL CHWI 09JUL2015 0
+ERAIL DALL 31JAN2014 0
+ERAIL DALL 09JUL2015 0
+ERAIL DALR 31JAN2014 0
+ERAIL DALR 09JUL2015 0
+ERAIL KANCY 31JAN2014 0
+ERAIL KANCY 09JUL2015 0
+ERAIL LOSAN 31JAN2014 0
+ERAIL LOSAN 09JUL2015 0
+ERAIL MEMPH 31JAN2014 0
+ERAIL MEMPH 09JUL2015 0
+ERAIL ZZOTH 31JAN2014 0
+ERAIL ZZOTH 09JUL2015 0
+HBG ATLAL 31JAN2014 0
+HBG ATLAL 09JUL2015 0
+HBG ATLAR 31JAN2014 0
+HBG ATLAR 09JUL2015 0
+HBG CHIL 31JAN2014 0
+HBG CHIL 09JUL2015 0
+HBG CHIN 31JAN2014 0
+HBG CHIN 09JUL2015 0
+HBG CHMET 31JAN2014 0
+HBG CHMET 09JUL2015 0
+HBG CHMI 31JAN2014 0
+HBG CHMI 09JUL2015 0
+HBG CHWI 31JAN2014 0
+HBG CHWI 09JUL2015 0
+HBG DALL 31JAN2014 0
+HBG DALL 09JUL2015 0
+HBG DALR 31JAN2014 0
+HBG DALR 09JUL2015 0
+HBG JACVL 31JAN2014 0
+HBG JACVL 09JUL2015 0
+HBG KANCY 31JAN2014 0
+HBG KANCY 09JUL2015 0
+HBG LOSAN 31JAN2014 0
+HBG LOSAN 09JUL2015 0
+HBG MEMPH 31JAN2014 0
+HBG MEMPH 09JUL2015 0
+HBG SALAC 31JAN2014 0
+HBG SALAC 09JUL2015 0
+HBG STKTN 31JAN2014 0
+HBG STKTN 09JUL2015 0
+HBG STLOU 31JAN2014 0
+HBG STLOU 09JUL2015 0
+HBG ZZOTH 31JAN2014 0
+HBG ZZOTH 09JUL2015 0
+JACVL CHIL 31JAN2014 0
+JACVL CHIL 09JUL2015 0
+JACVL CHIN 31JAN2014 0
+JACVL CHIN 09JUL2015 0
+JACVL CHMET 31JAN2014 0
+JACVL CHMET 09JUL2015 0
+JACVL CHMI 31JAN2014 0
+JACVL CHMI 09JUL2015 0
+JACVL CHOH 31JAN2014 0
+JACVL CHOH 09JUL2015 0
+JACVL CHWI 31JAN2014 0
+JACVL CHWI 09JUL2015 0
+JACVL CINTI 31JAN2014 0
+JACVL CINTI 09JUL2015 0
+JACVL DALL 31JAN2014 0
+JACVL DALL 09JUL2015 0
+JACVL DALR 31JAN2014 0
+JACVL DALR 09JUL2015 0
+JACVL HBG 31JAN2014 0
+JACVL HBG 09JUL2015 0
+JACVL KANCY 31JAN2014 0
+JACVL KANCY 09JUL2015 0
+JACVL LOSAN 31JAN2014 0
+JACVL LOSAN 09JUL2015 0
+JACVL MEMPH 31JAN2014 0
+JACVL MEMPH 09JUL2015 0
+JACVL STKTN 31JAN2014 0
+JACVL STKTN 09JUL2015 0
+JACVL STLOU 31JAN2014 0
+JACVL STLOU 09JUL2015 0
+JACVL ZZOTH 31JAN2014 0
+JACVL ZZOTH 09JUL2015 0
+KANCY ATLAL 31JAN2014 0
+KANCY ATLAL 09JUL2015 0
+KANCY ATLAR 31JAN2014 0
+KANCY ATLAR 09JUL2015 0
+KANCY BINDL 31JAN2014 0
+KANCY BINDL 09JUL2015 0
+KANCY ERAIL 31JAN2014 0
+KANCY ERAIL 09JUL2015 0
+KANCY HBG 31JAN2014 0
+KANCY HBG 09JUL2015 0
+KANCY JACVL 31JAN2014 0
+KANCY JACVL 09JUL2015 0
+KANCY LOSAN 31JAN2014 0
+KANCY LOSAN 09JUL2015 0
+KANCY PHILA 31JAN2014 0
+KANCY PHILA 09JUL2015 0
+KANCY PORTL 31JAN2014 0
+KANCY PORTL 09JUL2015 0
+KANCY SEATL 31JAN2014 0
+KANCY SEATL 09JUL2015 0
+KANCY STKTN 31JAN2014 0
+KANCY STKTN 09JUL2015 0
+KANCY ZZOTH 31JAN2014 0
+KANCY ZZOTH 09JUL2015 0
+LOSAN ALBNY 31JAN2014 0
+LOSAN ALBNY 09JUL2015 0
+LOSAN ATLAL 31JAN2014 0
+LOSAN ATLAL 09JUL2015 0
+LOSAN ATLAR 31JAN2014 0
+LOSAN ATLAR 09JUL2015 0
+LOSAN CHIL 31JAN2014 0
+LOSAN CHIL 09JUL2015 0
+LOSAN CHIN 31JAN2014 0
+LOSAN CHIN 09JUL2015 0
+LOSAN CHLTE 31JAN2014 0
+LOSAN CHLTE 09JUL2015 0
+LOSAN CHMET 31JAN2014 0
+LOSAN CHMET 09JUL2015 0
+LOSAN CHMI 31JAN2014 0
+LOSAN CHMI 09JUL2015 0
+LOSAN CHOH 31JAN2014 0
+LOSAN CHOH 09JUL2015 0
+LOSAN CHWI 31JAN2014 0
+LOSAN CHWI 09JUL2015 0
+LOSAN DALL 31JAN2014 0
+LOSAN DALL 09JUL2015 0
+LOSAN DALR 31JAN2014 0
+LOSAN DALR 09JUL2015 0
+LOSAN DENVR 31JAN2014 0
+LOSAN DENVR 09JUL2015 0
+LOSAN ERAIL 31JAN2014 0
+LOSAN ERAIL 09JUL2015 0
+LOSAN HBG 31JAN2014 0
+LOSAN HBG 09JUL2015 0
+LOSAN HUSTN 31JAN2014 0
+LOSAN HUSTN 09JUL2015 0
+LOSAN JACVL 31JAN2014 0
+LOSAN JACVL 09JUL2015 0
+LOSAN KANCY 31JAN2014 0
+LOSAN KANCY 09JUL2015 0
+LOSAN MEMPH 31JAN2014 0
+LOSAN MEMPH 09JUL2015 0
+LOSAN PHILA 31JAN2014 0
+LOSAN PHILA 09JUL2015 0
+LOSAN PORTL 31JAN2014 0
+LOSAN PORTL 09JUL2015 0
+LOSAN SEATL 31JAN2014 0
+LOSAN SEATL 09JUL2015 0
+LOSAN STLOU 31JAN2014 0
+LOSAN STLOU 09JUL2015 0
+LOSAN ZZOTH 31JAN2014 0
+LOSAN ZZOTH 09JUL2015 0
+MEMPH BINDL 31JAN2014 0
+MEMPH BINDL 09JUL2015 0
+MEMPH CHLTE 31JAN2014 0
+MEMPH CHLTE 09JUL2015 0
+MEMPH ERAIL 31JAN2014 0
+MEMPH ERAIL 09JUL2015 0
+MEMPH HBG 31JAN2014 0
+MEMPH HBG 09JUL2015 0
+MEMPH JACVL 31JAN2014 0
+MEMPH JACVL 09JUL2015 0
+MEMPH LOSAN 31JAN2014 0
+MEMPH LOSAN 09JUL2015 0
+MEMPH PHILA 31JAN2014 0
+MEMPH PHILA 09JUL2015 0
+MEMPH PORTL 31JAN2014 0
+MEMPH PORTL 09JUL2015 0
+MEMPH SALAC 31JAN2014 0
+MEMPH SALAC 09JUL2015 0
+MEMPH SEATL 31JAN2014 0
+MEMPH SEATL 09JUL2015 0
+MEMPH STKTN 31JAN2014 0
+MEMPH STKTN 09JUL2015 0
+MEMPH ZZOTH 31JAN2014 0
+MEMPH ZZOTH 09JUL2015 0
+MIAMI CHIL 31JAN2014 0
+MIAMI CHIL 09JUL2015 0
+MIAMI CHIN 31JAN2014 0
+MIAMI CHIN 09JUL2015 0
+MIAMI CHMET 31JAN2014 0
+MIAMI CHMET 09JUL2015 0
+MIAMI CHMI 31JAN2014 0
+MIAMI CHMI 09JUL2015 0
+MIAMI CHOH 31JAN2014 0
+MIAMI CHOH 09JUL2015 0
+MIAMI CHWI 31JAN2014 0
+MIAMI CHWI 09JUL2015 0
+MIAMI ZZOTH 31JAN2014 0
+MIAMI ZZOTH 09JUL2015 0
+NRFLK CHIL 31JAN2014 0
+NRFLK CHIL 09JUL2015 0
+NRFLK CHIN 31JAN2014 0
+NRFLK CHIN 09JUL2015 0
+NRFLK CHMET 31JAN2014 0
+NRFLK CHMET 09JUL2015 0
+NRFLK CHMI 31JAN2014 0
+NRFLK CHMI 09JUL2015 0
+NRFLK CHWI 31JAN2014 0
+NRFLK CHWI 09JUL2015 0
+NRFLK ZZOTH 31JAN2014 0
+NRFLK ZZOTH 09JUL2015 0
+ORLND LOSAN 31JAN2014 0
+ORLND LOSAN 09JUL2015 0
+ORLND ZZOTH 31JAN2014 0
+ORLND ZZOTH 09JUL2015 0
+PHILA ATLAL 31JAN2014 0
+PHILA ATLAL 09JUL2015 0
+PHILA ATLAR 31JAN2014 0
+PHILA ATLAR 09JUL2015 0
+PHILA CHIL 31JAN2014 0
+PHILA CHIL 09JUL2015 0
+PHILA CHIN 31JAN2014 0
+PHILA CHIN 09JUL2015 0
+PHILA CHMET 31JAN2014 0
+PHILA CHMET 09JUL2015 0
+PHILA CHOH 31JAN2014 0
+PHILA CHOH 09JUL2015 0
+PHILA CHWI 31JAN2014 0
+PHILA CHWI 09JUL2015 0
+PHILA DALL 31JAN2014 0
+PHILA DALL 09JUL2015 0
+PHILA DALR 31JAN2014 0
+PHILA DALR 09JUL2015 0
+PHILA KANCY 31JAN2014 0
+PHILA KANCY 09JUL2015 0
+PHILA LOSAN 31JAN2014 0
+PHILA LOSAN 09JUL2015 0
+PHILA MEMPH 31JAN2014 0
+PHILA MEMPH 09JUL2015 0
+PHILA STKTN 31JAN2014 0
+PHILA STKTN 09JUL2015 0
+PHILA ZZOTH 31JAN2014 0
+PHILA ZZOTH 09JUL2015 0
+PORTL ATLAL 31JAN2014 0
+PORTL ATLAL 09JUL2015 0
+PORTL ATLAR 31JAN2014 0
+PORTL ATLAR 09JUL2015 0
+PORTL CHIL 31JAN2014 0
+PORTL CHIL 09JUL2015 0
+PORTL CHIN 31JAN2014 0
+PORTL CHIN 09JUL2015 0
+PORTL CHMET 31JAN2014 0
+PORTL CHMET 09JUL2015 0
+PORTL CHMI 31JAN2014 0
+PORTL CHMI 09JUL2015 0
+PORTL CHOH 31JAN2014 0
+PORTL CHOH 09JUL2015 0
+PORTL CHWI 31JAN2014 0
+PORTL CHWI 09JUL2015 0
+PORTL DALL 31JAN2014 0
+PORTL DALL 09JUL2015 0
+PORTL DALR 31JAN2014 0
+PORTL DALR 09JUL2015 0
+PORTL KANCY 31JAN2014 0
+PORTL KANCY 09JUL2015 0
+PORTL ZZOTH 31JAN2014 0
+PORTL ZZOTH 09JUL2015 0
+SALAC ATLAL 31JAN2014 0
+SALAC ATLAL 09JUL2015 0
+SALAC ATLAR 31JAN2014 0
+SALAC ATLAR 09JUL2015 0
+SALAC CHIL 31JAN2014 0
+SALAC CHIL 09JUL2015 0
+SALAC CHIN 31JAN2014 0
+SALAC CHIN 09JUL2015 0
+SALAC CHMET 31JAN2014 0
+SALAC CHMET 09JUL2015 0
+SALAC CHMI 31JAN2014 0
+SALAC CHMI 09JUL2015 0
+SALAC CHOH 31JAN2014 0
+SALAC CHOH 09JUL2015 0
+SALAC CHWI 31JAN2014 0
+SALAC CHWI 09JUL2015 0
+SALAC HBG 31JAN2014 0
+SALAC HBG 09JUL2015 0
+SALAC MEMPH 31JAN2014 0
+SALAC MEMPH 09JUL2015 0
+SALAC ZZOTH 31JAN2014 0
+SALAC ZZOTH 09JUL2015 0
+SAVAN CHIL 31JAN2014 0
+SAVAN CHIL 09JUL2015 0
+SAVAN CHIN 31JAN2014 0
+SAVAN CHIN 09JUL2015 0
+SAVAN CHMET 31JAN2014 0
+SAVAN CHMET 09JUL2015 0
+SAVAN CHMI 31JAN2014 0
+SAVAN CHMI 09JUL2015 0
+SAVAN CHWI 31JAN2014 0
+SAVAN CHWI 09JUL2015 0
+SAVAN ZZOTH 31JAN2014 0
+SAVAN ZZOTH 09JUL2015 0
+SEATL CHIL 31JAN2014 0
+SEATL CHIL 09JUL2015 0
+SEATL CHIN 31JAN2014 0
+SEATL CHIN 09JUL2015 0
+SEATL CHMET 31JAN2014 0
+SEATL CHMET 09JUL2015 0
+SEATL CHMI 31JAN2014 0
+SEATL CHMI 09JUL2015 0
+SEATL CHOH 31JAN2014 0
+SEATL CHOH 09JUL2015 0
+SEATL CHWI 31JAN2014 0
+SEATL CHWI 09JUL2015 0
+SEATL DALL 31JAN2014 0
+SEATL DALL 09JUL2015 0
+SEATL DALR 31JAN2014 0
+SEATL DALR 09JUL2015 0
+SEATL KANCY 31JAN2014 0
+SEATL KANCY 09JUL2015 0
+SEATL MEMPH 31JAN2014 0
+SEATL MEMPH 09JUL2015 0
+SEATL ZZOTH 31JAN2014 0
+SEATL ZZOTH 09JUL2015 0
+STKTN ATLAL 31JAN2014 0
+STKTN ATLAL 09JUL2015 0
+STKTN ATLAR 31JAN2014 0
+STKTN ATLAR 09JUL2015 0
+STKTN BOST 31JAN2014 0
+STKTN BOST 09JUL2015 0
+STKTN CHIL 31JAN2014 0
+STKTN CHIL 09JUL2015 0
+STKTN CHIN 31JAN2014 0
+STKTN CHIN 09JUL2015 0
+STKTN CHLTE 31JAN2014 0
+STKTN CHLTE 09JUL2015 0
+STKTN CHMET 31JAN2014 0
+STKTN CHMET 09JUL2015 0
+STKTN CHMI 31JAN2014 0
+STKTN CHMI 09JUL2015 0
+STKTN CHOH 31JAN2014 0
+STKTN CHOH 09JUL2015 0
+STKTN CHWI 31JAN2014 0
+STKTN CHWI 09JUL2015 0
+STKTN DALL 31JAN2014 0
+STKTN DALL 09JUL2015 0
+STKTN DALR 31JAN2014 0
+STKTN DALR 09JUL2015 0
+STKTN HBG 31JAN2014 0
+STKTN HBG 09JUL2015 0
+STKTN MEMPH 31JAN2014 0
+STKTN MEMPH 09JUL2015 0
+STKTN PHILA 31JAN2014 0
+STKTN PHILA 09JUL2015 0
+STKTN SEATL 31JAN2014 0
+STKTN SEATL 09JUL2015 0
+STKTN STLOU 31JAN2014 0
+STKTN STLOU 09JUL2015 0
+STKTN ZZOTH 31JAN2014 0
+STKTN ZZOTH 09JUL2015 0
+STLOU HBG 31JAN2014 0
+STLOU HBG 09JUL2015 0
+STLOU JACVL 31JAN2014 0
+STLOU JACVL 09JUL2015 0
+STLOU LOSAN 31JAN2014 0
+STLOU LOSAN 09JUL2015 0
+STLOU STKTN 31JAN2014 0
+STLOU STKTN 09JUL2015 0
+STLOU ZZOTH 31JAN2014 0
+STLOU ZZOTH 09JUL2015 0
+STPAU HBG 31JAN2014 0
+STPAU HBG 09JUL2015 0
+STPAU ZZOTH 31JAN2014 0
+STPAU ZZOTH 09JUL2015 0
+NOTE: There were 143185 observations read from the data set
+      USER.MAJORORIGSUM2PT5.
+NOTE: The data set USER.MAJORORIGSUMBRACKET has 860 observations and 4
+      variables.
+NOTE: Compressing data set USER.MAJORORIGSUMBRACKET increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           2.29 seconds
+      cpu time            2.13 seconds
+
+
+
+NOTE: There were 860 observations read from the data set
+      USER.MAJORORIGSUMBRACKET.
+NOTE: There were 143185 observations read from the data set
+      USER.MAJORORIGSUM2PT5.
+NOTE: The data set USER.MAJORORIGSUMFULL has 143521 observations and 4
+      variables.
+NOTE: Compressing data set USER.MAJORORIGSUMFULL decreased size by 0.00
+      percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.42 seconds
+      cpu time            0.42 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      USER.MAJORORIGSUMFULL.
+NOTE: The data set USER.MAJORORIGSUMFULL has 143521 observations and 4
+      variables.
+NOTE: Compressing data set USER.MAJORORIGSUMFULL decreased size by 0.00
+      percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.30 seconds
+      cpu time            0.53 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      USER.MAJORORIGSUMFULL.
+NOTE: The data set USER.MAJORORIGSUMFULL has 143521 observations and 4
+      variables.
+NOTE: Compressing data set USER.MAJORORIGSUMFULL decreased size by 0.00
+      percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.37 seconds
+      cpu time            0.59 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      USER.MAJORORIGSUMFULL.
+NOTE: The data set USER.MAJORORIGSUMFULL has 143521 observations and 4
+      variables.
+NOTE: Compressing data set USER.MAJORORIGSUMFULL decreased size by 0.00
+      percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.28 seconds
+      cpu time            0.54 seconds
+
+
+
+NOTE: The data set USER.SUMZERO has 143521 observations and 4 variables.
+NOTE: Compressing data set USER.SUMZERO decreased size by 0.00 percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           0.55 seconds
+      cpu time            0.54 seconds
+
+
+
+NOTE: The data set HUBLIB.MAJORFCSTSUMMARY has 143521 observations and 4
+      variables.
+NOTE: Compressing data set HUBLIB.MAJORFCSTSUMMARY decreased size by 0.00
+      percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           0.52 seconds
+      cpu time            0.51 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      HUBLIB.MAJORFCSTSUMMARY.
+NOTE: The data set HUBLIB.MAJORFCSTSUMMARY has 143521 observations and 4
+      variables.
+NOTE: Compressing data set HUBLIB.MAJORFCSTSUMMARY decreased size by 0.00
+      percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.25 seconds
+      cpu time            0.24 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      HUBLIB.MAJORFCSTSUMMARY.
+NOTE: The data set HUBLIB.MAJORFCSTSUMMARY has 143521 observations and 4
+      variables.
+NOTE: Compressing data set HUBLIB.MAJORFCSTSUMMARY decreased size by 0.00
+      percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.28 seconds
+      cpu time            0.43 seconds
+
+
+
+NOTE: PROCEDURE CONTENTS used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: PROCEDURE PRINTTO used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      HUBLIB.MAJORFCSTSUMMARY.
+NOTE: The data set USER.MAJORFCSTSUMMARY has 143521 observations and 4
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY decreased size by 0.00
+      percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.25 seconds
+      cpu time            0.26 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      USER.MAJORFCSTSUMMARY.
+NOTE: The data set USER.MAJORFCSTSUMMARY has 143521 observations and 4
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY decreased size by 0.00
+      percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.27 seconds
+      cpu time            0.42 seconds
+
+
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      USER.MAJORFCSTSUMMARY.
+NOTE: There were 40 observations read from the data set HUBLIB.HOLIDAYS.
+NOTE: The data set USER.MAJORFCSTSUMMARY has 143521 observations and 6
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY decreased size by 45.91
+      percent.
+      Compressed is 86 pages; un-compressed would require 159 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.31 seconds
+      cpu time            0.31 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      HUBLIB.MAJORFCSTSUMMARY.
+NOTE: The data set USER.MFS has 143521 observations and 6 variables.
+NOTE: Compressing data set USER.MFS decreased size by 16.98 percent.
+      Compressed is 88 pages; un-compressed would require 106 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.44 seconds
+      cpu time            0.42 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MFS.
+NOTE: The data set USER.MFS has 143521 observations and 6 variables.
+NOTE: Compressing data set USER.MFS decreased size by 16.98 percent.
+      Compressed is 88 pages; un-compressed would require 106 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.40 seconds
+      cpu time            0.54 seconds
+
+
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MFS.
+NOTE: There were 40 observations read from the data set HUBLIB.HOLIDAYS.
+NOTE: The data set USER.HWKS has 2686 observations and 2 variables.
+NOTE: Compressing data set USER.HWKS increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.17 seconds
+      cpu time            0.18 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MFS.
+NOTE: The data set USER.MFS has 143521 observations and 6 variables.
+NOTE: Compressing data set USER.MFS decreased size by 16.98 percent.
+      Compressed is 88 pages; un-compressed would require 106 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.28 seconds
+      cpu time            0.40 seconds
+
+
+
+NOTE: There were 2686 observations read from the data set USER.HWKS.
+NOTE: 2671 observations with duplicate key values were deleted.
+NOTE: The data set USER.HWKS has 15 observations and 2 variables.
+NOTE: Compressing data set USER.HWKS increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 15 observations read from the data set USER.HWKS.
+NOTE: There were 143521 observations read from the data set USER.MFS.
+NOTE: The data set USER.MAJORFCSTSUMMARY has 143522 observations and 6
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY decreased size by 16.04
+      percent.
+      Compressed is 89 pages; un-compressed would require 106 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.31 seconds
+      cpu time            0.31 seconds
+
+
+
+NOTE: There were 143522 observations read from the data set
+      USER.MAJORFCSTSUMMARY.
+NOTE: The data set USER.MAJORFCSTSUMMARY has 143522 observations and 6
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY decreased size by 16.04
+      percent.
+      Compressed is 89 pages; un-compressed would require 106 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.36 seconds
+      cpu time            0.48 seconds
+
+
+
+NOTE: There were 143522 observations read from the data set
+      USER.MAJORFCSTSUMMARY.
+NOTE: The data set USER.MAJORFCSTSUMMARY2 has 149125 observations and 8
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY2 decreased size by 20.31
+      percent.
+      Compressed is 102 pages; un-compressed would require 128 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.38 seconds
+      cpu time            0.37 seconds
+
+
+
+NOTE: There were 149125 observations read from the data set
+      USER.MAJORFCSTSUMMARY2.
+NOTE: The data set USER.MAJORFCSTSUMMARY2 has 149125 observations and 8
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY2 decreased size by 20.31
+      percent.
+      Compressed is 102 pages; un-compressed would require 128 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.36 seconds
+      cpu time            0.57 seconds
+
+
+
+NOTE: There were 149125 observations read from the data set
+      USER.MAJORFCSTSUMMARY2.
+NOTE: The data set USER.MAJORFCSTSUMMARY2 has 149111 observations and 33
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY2 decreased size by 68.03
+      percent.
+      Compressed is 187 pages; un-compressed would require 585 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.64 seconds
+      cpu time            0.64 seconds
+
+
+
+NOTE: There were 149111 observations read from the data set
+      USER.MAJORFCSTSUMMARY2.
+NOTE: The data set USER.MAJORFCSTSUMMARY2 has 149111 observations and 34
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY2 decreased size by 68.60
+      percent.
+      Compressed is 189 pages; un-compressed would require 602 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.56 seconds
+      cpu time            0.56 seconds
+
+
+
+NOTE: There were 149111 observations read from the data set
+      USER.MAJORFCSTSUMMARY2.
+NOTE: The data set USER.MAJORFCSTSUMMARY2 has 149111 observations and 34
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY2 decreased size by 68.60
+      percent.
+      Compressed is 189 pages; un-compressed would require 602 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.68 seconds
+      cpu time            0.82 seconds
+
+
+
+NOTE: There were 149111 observations read from the data set
+      USER.MAJORFCSTSUMMARY2.
+NOTE: The data set USER.MAJORFCSTSUMMARY2 has 149111 observations and 35
+      variables.
+NOTE: Compressing data set USER.MAJORFCSTSUMMARY2 decreased size by 68.81
+      percent.
+      Compressed is 194 pages; un-compressed would require 622 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.78 seconds
+      cpu time            0.78 seconds
+
+
+
+NOTE: There were 149111 observations read from the data set
+      USER.MAJORFCSTSUMMARY2.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.20 seconds
+      cpu time            0.21 seconds
+
+
+
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=ALBNY fcstdest=CHIN
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=ALBNY fcstdest=CHMI
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=ALBNY fcstdest=CHOH
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=ATLAR fcstdest=CHIN
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=ATLAR fcstdest=CHOH
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=BINDL fcstdest=CHIL
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=BOST fcstdest=CHMI
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHIN fcstdest=NRFLK
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHLTE fcstdest=CHIN
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHMI fcstdest=ALBNY
+WARNING: Exact fit. No residual in model to analyze.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHMI fcstdest=BOST
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHMI fcstdest=CHLTE
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHMI fcstdest=HUSTN
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHMI fcstdest=MIAMI
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHMI fcstdest=SAVAN
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHOH fcstdest=ATLAR
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHOH fcstdest=BOST
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=CHOH fcstdest=ERAIL
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=HBG fcstdest=CHMI
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=MIAMI fcstdest=CHWI
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=NRFLK fcstdest=CHIN
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=NRFLK fcstdest=CHMI
+WARNING: There are zero degrees of freedom for error.
+NOTE: The above message was for the following BY group:
+      fcstorig=PHILA fcstdest=CHOH
+WARNING: Exact fit. No residual in model to analyze.
+NOTE: The above message was for the following BY group:
+      fcstorig=SAVAN fcstdest=CHIL
+NOTE: The data set USER.EST has 430 observations and 40 variables.
+NOTE: Compressing data set USER.EST decreased size by 0.00 percent.
+      Compressed is 3 pages; un-compressed would require 3 pages.
+NOTE: The data set USER.PRED has 149111 observations and 39 variables.
+NOTE: Compressing data set USER.PRED decreased size by 61.24 percent.
+      Compressed is 269 pages; un-compressed would require 694 pages.
+NOTE: PROCEDURE AUTOREG used (Total process time):
+      real time           7.91 seconds
+      cpu time            7.87 seconds
+
+
+
+NOTE: There were 149111 observations read from the data set USER.PRED.
+NOTE: The data set HUBLIB.MAJORFCSTACT has 143091 observations and 5 variables.
+NOTE: Compressing data set HUBLIB.MAJORFCSTACT increased size by 2.27 percent.
+      Compressed is 90 pages; un-compressed would require 88 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.39 seconds
+      cpu time            0.37 seconds
+
+
+ERROR: File USER.PRED_ARIMA.DATA does not exist.
+
+NOTE: Compression was disabled for data set USER.PRED_ARIMA_FINAL because
+      compression overhead would increase the size of the data set.
+WARNING: The variable forecast in the DROP, KEEP, or RENAME list has never been
+         referenced.
+NOTE: The SAS System stopped processing this step because of errors.
+WARNING: The data set USER.PRED_ARIMA_FINAL may be incomplete.  When this step
+         was stopped there were 0 observations and 1 variables.
+WARNING: Data set USER.PRED_ARIMA_FINAL was not replaced because this step was
+         stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 1 observations read from the data set HUBLIB.MAJORFCSTACT.
+NOTE: There were 0 observations read from the data set USER.PRED_ARIMA_FINAL.
+NOTE: The data set USER.DONE has 0 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: Missing values were generated as a result of performing an operation on
+      missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      139 at 5143:20   139 at 5144:11   117 at 5145:34
+NOTE: There were 143091 observations read from the data set HUBLIB.MAJORFCSTACT.
+NOTE: The data set USER.MAJFCSTEVAL has 143091 observations and 8 variables.
+NOTE: Compressing data set USER.MAJFCSTEVAL increased size by 1.42 percent.
+      Compressed is 143 pages; un-compressed would require 141 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.31 seconds
+      cpu time            0.29 seconds
+
+
+
+NOTE: There were 143091 observations read from the data set USER.MAJFCSTEVAL.
+NOTE: The data set USER.MAJFCSTSUM has 430 observations and 9 variables.
+NOTE: Compressing data set USER.MAJFCSTSUM increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.35 seconds
+      cpu time            0.35 seconds
+
+
+
+NOTE: There were 430 observations read from the data set USER.MAJFCSTSUM.
+NOTE: The data set USER.MAJORIGINFCSTACTTOT has 34 observations and 4 variables.
+NOTE: Compressing data set USER.MAJORIGINFCSTACTTOT increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 430 observations read from the data set USER.MAJFCSTSUM.
+NOTE: The data set USER.MAJFCSTSUM has 430 observations and 7 variables.
+NOTE: Compressing data set USER.MAJFCSTSUM increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 149111 observations read from the data set USER.PRED.
+NOTE: The data set HUBLIB.MAJORDEMANDFCST has 5712 observations and 4 variables.
+NOTE: Compressing data set HUBLIB.MAJORDEMANDFCST increased size by 66.67
+      percent.
+      Compressed is 5 pages; un-compressed would require 3 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.23 seconds
+      cpu time            0.21 seconds
+
+
+
+NOTE: There were 5712 observations read from the data set
+      HUBLIB.MAJORDEMANDFCST.
+NOTE: The data set HUBLIB.MAJORDEMANDFCST has 5712 observations and 4 variables.
+NOTE: Compressing data set HUBLIB.MAJORDEMANDFCST increased size by 66.67
+      percent.
+      Compressed is 5 pages; un-compressed would require 3 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 5712 observations read from the data set
+      HUBLIB.MAJORDEMANDFCST.
+NOTE: The data set USER.MAJORFCST has 476 observations and 5 variables.
+NOTE: Compressing data set USER.MAJORFCST increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 476 observations read from the data set USER.MAJORFCST.
+NOTE: The data set USER.MAJORFCSTORIGAVG has 34 observations and 4 variables.
+NOTE: Compressing data set USER.MAJORFCSTORIGAVG increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 476 observations read from the data set USER.MAJORFCST.
+NOTE: The data set HUBLIB.MAJORRAMPSUMMARY has 476 observations and 3 variables.
+NOTE: Compressing data set HUBLIB.MAJORRAMPSUMMARY increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 149111 observations read from the data set
+      USER.MAJORFCSTSUMMARY2.
+NOTE: The data set HUBLIB.R_DATASET has 149111 observations and 35 variables.
+NOTE: Compressing data set HUBLIB.R_DATASET decreased size by 68.81 percent.
+      Compressed is 194 pages; un-compressed would require 622 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.59 seconds
+      cpu time            0.57 seconds
+
+
+
+NOTE: There were 57862 observations read from the data set HUBLIB.MINORORIG.
+NOTE: The data set HUBLIB.MINORORIG has 57862 observations and 71 variables.
+NOTE: Compressing data set HUBLIB.MINORORIG decreased size by 29.57 percent.
+      Compressed is 474 pages; un-compressed would require 673 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           1.35 seconds
+      cpu time            0.90 seconds
+
+
+
+NOTE: There were 57862 observations read from the data set HUBLIB.MINORORIG.
+NOTE: The data set USER.OTHERORIGSUM has 37990 observations and 6 variables.
+NOTE: Compressing data set USER.OTHERORIGSUM decreased size by 25.00 percent.
+      Compressed is 21 pages; un-compressed would require 28 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.48 seconds
+      cpu time            0.48 seconds
+
+
+
+NOTE: There were 37990 observations read from the data set USER.OTHERORIGSUM.
+NOTE: The data set USER.OTHERFCSTSUMMARY2 has 7598 observations and 4 variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARY2 increased size by 25.00
+      percent.
+      Compressed is 5 pages; un-compressed would require 4 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: There were 7598 observations read from the data set
+      USER.OTHERFCSTSUMMARY2.
+NOTE: The data set USER.OTHERFCSTSUMMARY3 has 180 observations and 5 variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARY3 increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: There were 180 observations read from the data set USER.OTHERFCSTSUMMARY3.
+NOTE: The data set USER.OTHERFCSTSUMMARY4 has 36 observations and 3 variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARY4 increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 36 observations read from the data set USER.OTHERFCSTSUMMARY4.
+NOTE: The data set USER.OTHERFCSTSUMMARY4 has 36 observations and 3 variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARY4 increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 57862 observations read from the data set HUBLIB.MINORORIG.
+NOTE: There were 36 observations read from the data set USER.OTHERFCSTSUMMARY4.
+NOTE: The data set USER.OTHERFORECAST has 57862 observations and 74 variables.
+NOTE: Compressing data set USER.OTHERFORECAST decreased size by 30.04 percent.
+      Compressed is 482 pages; un-compressed would require 689 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.90 seconds
+      cpu time            0.88 seconds
+
+
+
+NOTE: The data set USER.OTHERFORECAST2PT5 has 7598 observations and 3 variables.
+NOTE: Compressing data set USER.OTHERFORECAST2PT5 increased size by 66.67
+      percent.
+      Compressed is 5 pages; un-compressed would require 3 pages.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           0.59 seconds
+      cpu time            0.57 seconds
+
+
+
+NOTE: There were 7598 observations read from the data set
+      USER.OTHERFORECAST2PT5.
+NOTE: The data set USER.OTHERSUMBRACKET has 72 observations and 3 variables.
+NOTE: Compressing data set USER.OTHERSUMBRACKET increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 72 observations read from the data set USER.OTHERSUMBRACKET.
+NOTE: There were 7598 observations read from the data set
+      USER.OTHERFORECAST2PT5.
+NOTE: The data set USER.OTHERSUMFULL has 7640 observations and 3 variables.
+NOTE: Compressing data set USER.OTHERSUMFULL increased size by 66.67 percent.
+      Compressed is 5 pages; un-compressed would require 3 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: There were 7640 observations read from the data set USER.OTHERSUMFULL.
+NOTE: The data set USER.OTHERSUMFULL has 7640 observations and 3 variables.
+NOTE: Compressing data set USER.OTHERSUMFULL increased size by 66.67 percent.
+      Compressed is 5 pages; un-compressed would require 3 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 7640 observations read from the data set USER.OTHERSUMFULL.
+NOTE: The data set USER.SUMZERO has 18900 observations and 3 variables.
+NOTE: Compressing data set USER.SUMZERO increased size by 28.57 percent.
+      Compressed is 9 pages; un-compressed would require 7 pages.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.09 seconds
+
+
+
+NOTE: The data set USER.OTHERFCSTSUMMARY has 18900 observations and 3 variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARY increased size by 28.57
+      percent.
+      Compressed is 9 pages; un-compressed would require 7 pages.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           0.12 seconds
+      cpu time            0.10 seconds
+
+
+
+NOTE: There were 18900 observations read from the data set
+      USER.OTHERFCSTSUMMARY.
+NOTE: The data set USER.OTHERFCSTSUMMARY has 18900 observations and 3 variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARY increased size by 28.57
+      percent.
+      Compressed is 9 pages; un-compressed would require 7 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 18900 observations read from the data set
+      USER.OTHERFCSTSUMMARY.
+NOTE: The data set USER.OTHERFCSTSUMMARY has 18900 observations and 3 variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARY increased size by 28.57
+      percent.
+      Compressed is 9 pages; un-compressed would require 7 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: There were 18900 observations read from the data set
+      USER.OTHERFCSTSUMMARY.
+NOTE: The data set USER.SUMLOADCNT has 180 observations and 5 variables.
+NOTE: Compressing data set USER.SUMLOADCNT increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 18900 observations read from the data set
+      USER.OTHERFCSTSUMMARY.
+NOTE: The data set USER.OTHERFCSTSUMMARY has 18900 observations and 3 variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARY increased size by 28.57
+      percent.
+      Compressed is 9 pages; un-compressed would require 7 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: There were 18900 observations read from the data set
+      USER.OTHERFCSTSUMMARY.
+NOTE: There were 40 observations read from the data set HUBLIB.HOLIDAYS.
+NOTE: The data set USER.OTHERFCSTSUMMARYX has 18900 observations and 5
+      variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARYX decreased size by 42.11
+      percent.
+      Compressed is 11 pages; un-compressed would require 19 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.07 seconds
+
+
+
+NOTE: There were 18900 observations read from the data set
+      USER.OTHERFCSTSUMMARY.
+NOTE: The data set USER.OTHERFCSTSUMMARYX has 18900 observations and 3
+      variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARYX increased size by 28.57
+      percent.
+      Compressed is 9 pages; un-compressed would require 7 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: There were 18900 observations read from the data set
+      USER.OTHERFCSTSUMMARYX.
+NOTE: The data set USER.OTHERFCSTSUMMARYX has 18900 observations and 3
+      variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARYX increased size by 28.57
+      percent.
+      Compressed is 9 pages; un-compressed would require 7 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.07 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: There were 18900 observations read from the data set
+      USER.OTHERFCSTSUMMARYX.
+NOTE: The data set USER.OTHERFCSTSUMMARYX has 19368 observations and 5
+      variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARYX decreased size by 0.00
+      percent.
+      Compressed is 10 pages; un-compressed would require 10 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: There were 19368 observations read from the data set
+      USER.OTHERFCSTSUMMARYX.
+NOTE: The data set USER.OTHERFCSTSUMMARYX has 19368 observations and 5
+      variables.
+NOTE: Compressing data set USER.OTHERFCSTSUMMARYX decreased size by 0.00
+      percent.
+      Compressed is 10 pages; un-compressed would require 10 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.07 seconds
+
+
+
+NOTE: There were 19368 observations read from the data set
+      USER.OTHERFCSTSUMMARYX.
+NOTE: The data set USER.OTHERSUM has 19368 observations and 26 variables.
+NOTE: Compressing data set USER.OTHERSUM decreased size by 70.00 percent.
+      Compressed is 18 pages; un-compressed would require 60 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.09 seconds
+      cpu time            0.10 seconds
+
+
+
+NOTE: There were 19368 observations read from the data set USER.OTHERSUM.
+NOTE: The data set USER.OTHERSUM has 19368 observations and 26 variables.
+NOTE: Compressing data set USER.OTHERSUM decreased size by 70.00 percent.
+      Compressed is 18 pages; un-compressed would require 60 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.09 seconds
+      cpu time            0.09 seconds
+
+
+
+NOTE: There were 19368 observations read from the data set USER.OTHERSUM.
+NOTE: The data set USER.OTHERSUM has 19368 observations and 27 variables.
+NOTE: Compressing data set USER.OTHERSUM decreased size by 69.35 percent.
+      Compressed is 19 pages; un-compressed would require 62 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.10 seconds
+      cpu time            0.10 seconds
+
+
+
+NOTE: There were 19368 observations read from the data set USER.OTHERSUM.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+WARNING: File USER.MFS1.DATA does not exist.
+WARNING: Table USER.MFS1 has not been dropped.
+NOTE: Compressing data set USER.MFS1 decreased size by 68.66 percent.
+      Compressed is 21 pages; un-compressed would require 67 pages.
+NOTE: Table USER.MFS1 created, with 19368 rows and 29 columns.
+
+NOTE: Table USER.MFS2 created, with 0 rows and 2 columns.
+
+NOTE: No rows were updated in USER.MFS1.
+
+NOTE: Table USER.MFS2 has been dropped.
+NOTE: Table USER.OTHERSUM has been dropped.
+NOTE: Compressing data set USER.OTHERSUM decreased size by 68.66 percent.
+      Compressed is 21 pages; un-compressed would require 67 pages.
+NOTE: Table USER.OTHERSUM created, with 19368 rows and 29 columns.
+
+NOTE: Table USER.MFSA created, with 0 rows and 29 columns.
+
+NOTE: No rows were updated in USER.MFSA.
+
+NOTE: Table USER.OTHERSUM has been dropped.
+NOTE: Table USER.OTHERSUM created, with 0 rows and 29 columns.
+
+NOTE: Table USER.MFS1 has been dropped.
+NOTE: Table USER.MFSA has been dropped.
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           1.27 seconds
+      cpu time            0.74 seconds
+
+
+
+NOTE: The data set USER.EST has 0 observations and 39 variables.
+NOTE: The data set USER.PRED has 0 observations and 33 variables.
+NOTE: PROCEDURE AUTOREG used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.06 seconds
+
+
+
+NOTE: Input data set is empty.
+NOTE: The data set USER.PRED has 0 observations and 33 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 0 observations read from the data set USER.PRED.
+NOTE: The data set HUBLIB.OTHERFCSTACT has 0 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 0 observations read from the data set HUBLIB.OTHERFCSTACT.
+NOTE: The data set USER.MINFCSTEVAL has 0 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: No observations in data set USER.MINFCSTEVAL.
+NOTE: The data set USER.MINFCSTACTSUM has 0 observations and 8 variables.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 0 observations read from the data set USER.MINFCSTACTSUM.
+NOTE: The data set USER.MINFCSTACTSUM has 0 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 34 observations read from the data set
+      USER.MAJORIGINFCSTACTTOT.
+NOTE: There were 0 observations read from the data set USER.MINFCSTACTSUM.
+NOTE: The data set USER.FCSTACTTOTS has 34 observations and 8 variables.
+NOTE: Compressing data set USER.FCSTACTTOTS increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 34 observations read from the data set USER.FCSTACTTOTS.
+NOTE: The data set USER.FCSTACTTOTS has 34 observations and 8 variables.
+NOTE: Compressing data set USER.FCSTACTTOTS increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 34 observations read from the data set USER.FCSTACTTOTS.
+NOTE: PROCEDURE PRINT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 34 observations read from the data set USER.FCSTACTTOTS.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 0 observations read from the data set USER.PRED.
+NOTE: The data set HUBLIB.OTHERDEMANDFCST has 0 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: No observations in data set HUBLIB.OTHERDEMANDFCST.
+NOTE: The data set USER.MINORFCSTORIGAVG has 0 observations and 4 variables.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 0 observations read from the data set USER.MINORFCSTORIGAVG.
+NOTE: There were 34 observations read from the data set USER.MAJORFCSTORIGAVG.
+NOTE: The data set USER.FCSTORIGAVG has 34 observations and 4 variables.
+NOTE: Compressing data set USER.FCSTORIGAVG increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 34 observations read from the data set USER.FCSTORIGAVG.
+NOTE: The data set USER.FCSTORIGAVG has 34 observations and 4 variables.
+NOTE: Compressing data set USER.FCSTORIGAVG increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 34 observations read from the data set USER.FCSTORIGAVG.
+NOTE: There were 34 observations read from the data set USER.FCSTACTTOTS.
+NOTE: The data set USER.FCSTANDHIST has 34 observations and 3 variables.
+NOTE: Compressing data set USER.FCSTANDHIST increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 34 observations read from the data set USER.FCSTANDHIST.
+NOTE: PROCEDURE PRINT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 34 observations read from the data set USER.FCSTANDHIST.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+5625 +??*
+      -
+      180
+
+ERROR 180-322: Statement is not valid or it is used out of proper order.
+
+
+NOTE: PROCEDURE PRINTTO used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 1110062 observations read from the data set HUBLIB.ALLDATAPLUS.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 69
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 28.63
+      percent.
+      Compressed is 8808 pages; un-compressed would require 12341 pages.
+NOTE: DATA statement used (Total process time):
+      real time           35.05 seconds
+      cpu time            17.11 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 73
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 29.18
+      percent.
+      Compressed is 9156 pages; un-compressed would require 12928 pages.
+NOTE: DATA statement used (Total process time):
+      real time           44.32 seconds
+      cpu time            17.56 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 75
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 29.99
+      percent.
+      Compressed is 9272 pages; un-compressed would require 13244 pages.
+NOTE: DATA statement used (Total process time):
+      real time           49.27 seconds
+      cpu time            19.86 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 8
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 21.90
+      percent.
+      Compressed is 831 pages; un-compressed would require 1064 pages.
+NOTE: DATA statement used (Total process time):
+      real time           16.01 seconds
+      cpu time            7.36 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 8
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 21.90
+      percent.
+      Compressed is 831 pages; un-compressed would require 1064 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           2.76 seconds
+      cpu time            4.08 seconds
+
+
+
+NOTE: The data set USER.LD_NT_TIME has 1451 observations and 3 variables.
+NOTE: Compressing data set USER.LD_NT_TIME increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           4.98 seconds
+      cpu time            3.32 seconds
+
+
+
+NOTE: Compression was disabled for data set USER.ASDF because compression
+      overhead would increase the size of the data set.
+NOTE: The data set USER.ASDF has 1 observations and 1 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           3.00 seconds
+      cpu time            2.82 seconds
+
+
+NOTE: Table USER.ASDF has been dropped.
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 8
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 21.90
+      percent.
+      Compressed is 831 pages; un-compressed would require 1064 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           2.72 seconds
+      cpu time            4.07 seconds
+
+
+
+NOTE: The data set USER.NT_CU_TIME has 7970 observations and 4 variables.
+NOTE: Compressing data set USER.NT_CU_TIME increased size by 25.00 percent.
+      Compressed is 5 pages; un-compressed would require 4 pages.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           3.87 seconds
+      cpu time            3.37 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 8
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 21.90
+      percent.
+      Compressed is 831 pages; un-compressed would require 1064 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           2.53 seconds
+      cpu time            3.69 seconds
+
+
+
+NOTE: The data set USER.NT_CU_TIME_ALL has 7 observations and 2 variables.
+NOTE: Compressing data set USER.NT_CU_TIME_ALL increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           3.42 seconds
+      cpu time            3.05 seconds
+
+
+
+NOTE: There were 1512 observations read from the data set USER.ALLDATAPLUS.
+NOTE: There were 0 observations read from the data set USER.INTRANSIT.
+NOTE: The data set USER.INTRANSIT has 0 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: Input data set is empty.
+NOTE: The data set USER.INTRANSIT has 0 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 1451 observations read from the data set USER.LD_NT_TIME.
+NOTE: The data set USER.LD_NT_TIME has 1451 observations and 3 variables.
+NOTE: Compressing data set USER.LD_NT_TIME increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 0 observations read from the data set USER.INTRANSIT.
+NOTE: There were 1451 observations read from the data set USER.LD_NT_TIME.
+NOTE: The data set USER.INTRANSIT has 0 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 0 observations read from the data set USER.INTRANSIT.
+NOTE: The data set USER.INTRANSIT has 0 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+
+16MAR2014
+16MAR2014
+16MAR2014
+16MAR2014
+14APR2014
+14APR2014
+15JUN2014
+15JUN2014
+15MAY2014
+15MAY2014
+07OCT2014
+07OCT2014
+02APR2015
+02APR2015
+08MAY2014
+08MAY2014
+11MAR2015
+11MAR2015
+21FEB2015
+21FEB2015
+31JAN2015
+31JAN2015
+06MAR2015
+06MAR2015
+10SEP2014
+10SEP2014
+31OCT2014
+31OCT2014
+04NOV2014
+04NOV2014
+05NOV2014
+05NOV2014
+05NOV2014
+05NOV2014
+05NOV2014
+05NOV2014
+06MAY2015
+06MAY2015
+08FEB2015
+08FEB2015
+08FEB2015
+08FEB2015
+08FEB2015
+08FEB2015
+28MAR2015
+28MAR2015
+30APR2014
+30APR2014
+24MAR2015
+24MAR2015
+01JAN2015
+01JAN2015
+10AUG2014
+10AUG2014
+18MAY2014
+18MAY2014
+23DEC2014
+23DEC2014
+27NOV2014
+27NOV2014
+24NOV2014
+24NOV2014
+26JUL2014
+26JUL2014
+06MAY2014
+06MAY2014
+20JUN2014
+20JUN2014
+24MAR2014
+24MAR2014
+21MAR2014
+21MAR2014
+01JAN2015
+01JAN2015
+27DEC2014
+27DEC2014
+27DEC2014
+27DEC2014
+23DEC2014
+23DEC2014
+14JAN2015
+14JAN2015
+27DEC2014
+27DEC2014
+01JAN2015
+01JAN2015
+23DEC2014
+23DEC2014
+01JAN2015
+01JAN2015
+13MAR2015
+13MAR2015
+17MAR2015
+17MAR2015
+29DEC2014
+29DEC2014
+08APR2014
+08APR2014
+02FEB2015
+02FEB2015
+15FEB2015
+15FEB2015
+25APR2014
+25APR2014
+03JUN2014
+03JUN2014
+11JAN2015
+11JAN2015
+19MAR2015
+19MAR2015
+16MAY2014
+16MAY2014
+03JUN2014
+03JUN2014
+12JAN2015
+12JAN2015
+10MAR2015
+10MAR2015
+18JAN2015
+18JAN2015
+26OCT2014
+26OCT2014
+29SEP2014
+29SEP2014
+16FEB2014
+16FEB2014
+02NOV2014
+02NOV2014
+29SEP2014
+29SEP2014
+08SEP2014
+08SEP2014
+12JAN2015
+12JAN2015
+08JUN2014
+08JUN2014
+12MAY2014
+12MAY2014
+01DEC2014
+01DEC2014
+20APR2014
+20APR2014
+27OCT2014
+27OCT2014
+15SEP2014
+15SEP2014
+07SEP2014
+07SEP2014
+15DEC2014
+15DEC2014
+03AUG2014
+03AUG2014
+16DEC2014
+16DEC2014
+17FEB2014
+17FEB2014
+24NOV2014
+24NOV2014
+18JAN2015
+18JAN2015
+18MAY2014
+18MAY2014
+05OCT2014
+05OCT2014
+25DEC2014
+25DEC2014
+11AUG2014
+11AUG2014
+15JUN2014
+15JUN2014
+02MAR2014
+02MAR2014
+17AUG2014
+17AUG2014
+19JAN2015
+19JAN2015
+14APR2014
+14APR2014
+11JAN2015
+11JAN2015
+19MAY2014
+19MAY2014
+25AUG2014
+25AUG2014
+20JUL2014
+20JUL2014
+24FEB2014
+24FEB2014
+10MAR2014
+10MAR2014
+08DEC2014
+08DEC2014
+16JUN2014
+16JUN2014
+30NOV2014
+30NOV2014
+21SEP2014
+21SEP2014
+24AUG2014
+24AUG2014
+22JUN2014
+22JUN2014
+23FEB2014
+23FEB2014
+21JUL2014
+21JUL2014
+16NOV2014
+16NOV2014
+18AUG2014
+18AUG2014
+23JUN2014
+23JUN2014
+09JUN2014
+09JUN2014
+16MAR2014
+16MAR2014
+28APR2014
+28APR2014
+26DEC2014
+26DEC2014
+26MAY2014
+26MAY2014
+22DEC2014
+22DEC2014
+02JAN2015
+02JAN2015
+17MAR2014
+17MAR2014
+07APR2014
+07APR2014
+31MAR2014
+31MAR2014
+08APR2014
+08APR2014
+09FEB2015
+09FEB2015
+29MAR2015
+29MAR2015
+16MAY2014
+16MAY2014
+NOTE: There were 1104605 observations read from the data set USER.ALLDATAPLUS.
+NOTE: The data set USER.ISNOTIFY has 120 observations and 7 variables.
+NOTE: Compressing data set USER.ISNOTIFY increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           5.86 seconds
+      cpu time            5.39 seconds
+
+
+
+NOTE: There were 0 observations read from the data set USER.INTRANSIT.
+NOTE: There were 120 observations read from the data set USER.ISNOTIFY.
+NOTE: The data set USER.CURRENTORD has 120 observations and 8 variables.
+NOTE: Compressing data set USER.CURRENTORD increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 120 observations read from the data set USER.CURRENTORD.
+NOTE: The data set USER.CURRENTORD has 120 observations and 8 variables.
+NOTE: Compressing data set USER.CURRENTORD increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 7970 observations read from the data set USER.NT_CU_TIME.
+NOTE: The data set USER.NT_CU_TIME has 7970 observations and 4 variables.
+NOTE: Compressing data set USER.NT_CU_TIME increased size by 25.00 percent.
+      Compressed is 5 pages; un-compressed would require 4 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+ERROR: File USER.CURRENT.DATA does not exist.
+
+NOTE: The SAS System stopped processing this step because of errors.
+WARNING: The data set USER.CURRENTORD may be incomplete.  When this step was
+         stopped there were 0 observations and 5 variables.
+WARNING: Data set USER.CURRENTORD was not replaced because this step was
+         stopped.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 120 observations read from the data set USER.CURRENTORD.
+NOTE: The data set USER.CURRENTORD has 120 observations and 8 variables.
+NOTE: Compressing data set USER.CURRENTORD increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 7 observations read from the data set USER.NT_CU_TIME_ALL.
+NOTE: The data set USER.NT_CU_TIME_ALL has 7 observations and 2 variables.
+NOTE: Compressing data set USER.NT_CU_TIME_ALL increased size by 100.00
+      percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 120 observations read from the data set USER.CURRENTORD.
+NOTE: There were 7 observations read from the data set USER.NT_CU_TIME_ALL.
+NOTE: The data set USER.CURRENTORD has 18 observations and 11 variables.
+NOTE: Compressing data set USER.CURRENTORD increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: No observations were selected from data set USER.CURRENTORD.
+NOTE: There were 0 observations read from the data set USER.CURRENTORD.
+      WHERE enddate=.;
+NOTE: PROCEDURE PRINT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+
+
+                                   Directory
+
+Libref         WORK
+Engine         V9
+Physical Name  C:\Users\JOHN~1.KRO\AppData\Local\Temp\SAS
+               Temporary Files\_TD7148_L-PC01XKEZ_
+Filename       C:\Users\JOHN~1.KRO\AppData\Local\Temp\SAS
+               Temporary Files\_TD7148_L-PC01XKEZ_
+WARNING: No matching members in directory.
+
+NOTE: The file WORK.CURRENTSUM1 (memtype=DATA) was not found, but appears on a
+      DELETE statement.
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 18 observations read from the data set USER.CURRENTORD.
+NOTE: The data set USER.CURRENTORD has 18 observations and 11 variables.
+NOTE: Compressing data set USER.CURRENTORD increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 18 observations read from the data set USER.CURRENTORD.
+NOTE: The data set USER.CURRENTSUM has 15 observations and 4 variables.
+NOTE: Compressing data set USER.CURRENTSUM increased size by 100.00 percent.
+      Compressed is 2 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.04 seconds
+
+
+                                   Directory
+
+Libref         WORK
+Engine         V9
+Physical Name  C:\Users\JOHN~1.KRO\AppData\Local\Temp\SAS
+               Temporary Files\_TD7148_L-PC01XKEZ_
+Filename       C:\Users\JOHN~1.KRO\AppData\Local\Temp\SAS
+               Temporary Files\_TD7148_L-PC01XKEZ_
+WARNING: No matching members in directory.
+
+NOTE: The file WORK.MAJORDEL (memtype=DATA) was not found, but appears on a
+      DELETE statement.
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      HUBLIB.MAJORFCSTSUMMARY.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 4 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 0.00 percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.23 seconds
+      cpu time            0.25 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 4 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 0.00 percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.25 seconds
+      cpu time            0.32 seconds
+
+
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: There were 1451 observations read from the data set USER.LD_NT_TIME.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 7 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 18.55 percent.
+      Compressed is 101 pages; un-compressed would require 124 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.42 seconds
+      cpu time            0.43 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 7 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 18.55 percent.
+      Compressed is 101 pages; un-compressed would require 124 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.36 seconds
+      cpu time            0.56 seconds
+
+
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: There were 7970 observations read from the data set USER.NT_CU_TIME.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 8 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 22.70 percent.
+      Compressed is 109 pages; un-compressed would require 141 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.41 seconds
+      cpu time            0.42 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 8 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 22.70 percent.
+      Compressed is 109 pages; un-compressed would require 141 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.34 seconds
+      cpu time            0.46 seconds
+
+
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: There were 7 observations read from the data set USER.NT_CU_TIME_ALL.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 4 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 0.00 percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.37 seconds
+      cpu time            0.35 seconds
+
+
+                                   Directory
+
+                       Libref         USER
+                       Engine         V9
+                       Physical Name  c:\sasmodel\userlib
+                       Filename       c:\sasmodel\userlib
+
+
+                             Member
+     #  Name                 Type     File Size  Last Modified
+
+     1  A                    DATA        196608  07/10/2015 12:07:04
+     2  ALLDATAPLUS          DATA     586809344  07/10/2015 13:45:24
+     3  CURRENTORD           DATA        196608  07/10/2015 13:53:51
+     4  CURRENTSUM           DATA        196608  07/10/2015 13:53:51
+     5  DONE                 DATA        196608  07/10/2015 13:50:47
+     6  EST                  DATA        196608  07/10/2015 13:50:55
+     7  F                    DATA       4718592  07/10/2015 12:00:37
+     8  FCSTACTTOTS          DATA        196608  07/10/2015 13:50:56
+     9  FCSTANDHIST          DATA        196608  07/10/2015 13:50:56
+    10  FCSTORIGAVG          DATA        196608  07/10/2015 13:50:56
+    11  HD1                  DATA       5832704  07/10/2015 12:07:01
+    12  HWKS                 DATA        196608  07/10/2015 13:50:33
+    13  INORIGS              DATA        196608  07/10/2015 13:43:53
+    14  INTRANSIT            DATA        196608  07/10/2015 13:53:45
+    15  ISNOTIFY             DATA        196608  07/10/2015 13:53:51
+    16  LD_NT_TIME           DATA        196608  07/10/2015 13:53:45
+    17  MAJFCSTEVAL          DATA       9437184  07/10/2015 13:50:47
+    18  MAJFCSTSUM           DATA        196608  07/10/2015 13:50:48
+    19  MAJORDEL             DATA       4718592  07/10/2015 13:53:54
+    20  MAJORFCST            DATA        196608  07/10/2015 13:50:48
+    21  MAJORFCSTORIGAVG     DATA        196608  07/10/2015 13:50:48
+    22  MAJORFCSTSUMMARY     DATA       5898240  07/10/2015 13:50:34
+    23  MAJORFCSTSUMMARY2    DATA      12779520  07/10/2015 13:50:38
+    24  MAJORIGINFCSTACTTOT  DATA        196608  07/10/2015 13:50:47
+    25  MAJORORIGSUM         DATA      34799616  07/10/2015 13:47:31
+    26  MAJORORIGSUM2        DATA       6094848  07/10/2015 13:47:32
+    27  MAJORORIGSUM2PT5     DATA       4718592  07/10/2015 13:50:25
+    28  MAJORORIGSUM3        DATA        327680  07/10/2015 13:47:32
+    29  MAJORORIGSUM4        DATA        196608  07/10/2015 13:47:32
+    30  MAJORORIGSUMBRACKET  DATA        196608  07/10/2015 13:50:28
+    31  MAJORORIGSUMFULL     DATA       4718592  07/10/2015 13:50:29
+    32  MAJORPKU             DATA       4653056  07/10/2015 12:00:36
+    33  MFS                  DATA       5832704  07/10/2015 13:50:33
+    34  MFSB                 DATA       1114112  07/10/2015 10:11:15
+    35  MFS_WH               DATA       5898240  07/10/2015 10:26:41
+    36  MFS_WK               DATA       5898240  07/10/2015 11:19:48
+    37  MINFCSTACTSUM        DATA        196608  07/10/2015 13:50:56
+    38  MINFCSTEVAL          DATA        196608  07/10/2015 13:50:56
+    39  MINORFCSTORIGAVG     DATA        196608  07/10/2015 13:50:56
+    40  NT_CU_TIME           DATA        393216  07/10/2015 13:53:51
+    41  NT_CU_TIME_ALL       DATA        196608  07/10/2015 13:53:51
+    42  OTHERFCSTSUMMARY     DATA        655360  07/10/2015 13:50:53
+    43  OTHERFCSTSUMMARY2    DATA        393216  07/10/2015 13:50:51
+    44  OTHERFCSTSUMMARY3    DATA        196608  07/10/2015 13:50:51
+    45  OTHERFCSTSUMMARY4    DATA        196608  07/10/2015 13:50:51
+    46  OTHERFCSTSUMMARYX    DATA        720896  07/10/2015 13:50:54
+    47  OTHERFORECAST        DATA      31653888  07/10/2015 13:50:52
+    48  OTHERFORECAST2PT5    DATA        393216  07/10/2015 13:50:52
+    49  OTHERORIGSUM         DATA       1441792  07/10/2015 13:50:51
+    50  OTHERSUM             DATA        196608  07/10/2015 13:50:55
+    51  OTHERSUMBRACKET      DATA        196608  07/10/2015 13:50:52
+    52  OTHERSUMFULL         DATA        393216  07/10/2015 13:50:53
+    53  PRED                 DATA        196608  07/10/2015 13:50:56
+    54  PRED_ARIMA_FINAL     DATA        131072  07/09/2015 13:57:39
+    55  SUMLOADCNT           DATA        196608  07/10/2015 13:50:53
+    56  SUMZERO              DATA        655360  07/10/2015 13:50:53
+    57  TIMETURNTRANSIT      DATA      54525952  07/10/2015 13:53:41
+
+NOTE: The file USER.TDEL (memtype=DATA) was not found, but appears on a DELETE
+      statement.
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.14 seconds
+      cpu time            0.15 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: There were 15 observations read from the data set USER.CURRENTSUM.
+NOTE: The data set USER.TDEL has 143536 observations and 4 variables.
+NOTE: Compressing data set USER.TDEL decreased size by 0.00 percent.
+      Compressed is 71 pages; un-compressed would require 71 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.24 seconds
+      cpu time            0.24 seconds
+
+
+6018  %include "c:\sasmodel\v3\1_queries.sas";
+6019  %include "c:\sasmodel\v3\2_build datasets.sas";
+6020  %include "c:\sasmodel\v3\3_pickups.sas";
+6021  %include "c:\sasmodel\v3\4_deliveries.sas";
+6022  %include "c:\sasmodel\v3\5_final processing.sas";
+6023  %include "c:\sasmodel\v3\6_Apply Manual Adjustments.sas";
+6024  %include "c:\sasmodel\v3\7_Rebuild Final Table.sas";
+
+6025  %include "c:\sasmodel\v3\4_deliveries.sas";
+
+NOTE: PROCEDURE PRINTTO used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 1110062 observations read from the data set HUBLIB.ALLDATAPLUS.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 69
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 28.67
+      percent.
+      Compressed is 8803 pages; un-compressed would require 12341 pages.
+NOTE: DATA statement used (Total process time):
+      real time           34.51 seconds
+      cpu time            18.31 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 73
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 29.22
+      percent.
+      Compressed is 9151 pages; un-compressed would require 12928 pages.
+NOTE: DATA statement used (Total process time):
+      real time           45.90 seconds
+      cpu time            17.73 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 75
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 30.03
+      percent.
+      Compressed is 9267 pages; un-compressed would require 13244 pages.
+NOTE: DATA statement used (Total process time):
+      real time           49.73 seconds
+      cpu time            19.93 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 8
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 21.99
+      percent.
+      Compressed is 830 pages; un-compressed would require 1064 pages.
+NOTE: DATA statement used (Total process time):
+      real time           15.59 seconds
+      cpu time            7.75 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 8
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 21.99
+      percent.
+      Compressed is 830 pages; un-compressed would require 1064 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           2.80 seconds
+      cpu time            4.25 seconds
+
+
+
+NOTE: The data set USER.LD_NT_TIME has 1451 observations and 3 variables.
+NOTE: Compressing data set USER.LD_NT_TIME decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           4.02 seconds
+      cpu time            3.55 seconds
+
+
+
+NOTE: Compression was disabled for data set USER.ASDF because compression
+      overhead would increase the size of the data set.
+NOTE: The data set USER.ASDF has 1 observations and 1 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           3.32 seconds
+      cpu time            2.93 seconds
+
+
+NOTE: Table USER.ASDF has been dropped.
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 8
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 21.99
+      percent.
+      Compressed is 830 pages; un-compressed would require 1064 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           3.03 seconds
+      cpu time            4.13 seconds
+
+
+
+NOTE: The data set USER.NT_CU_TIME has 7970 observations and 4 variables.
+NOTE: Compressing data set USER.NT_CU_TIME decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           3.85 seconds
+      cpu time            3.47 seconds
+
+
+
+NOTE: There were 1085932 observations read from the data set
+      USER.TIMETURNTRANSIT.
+NOTE: The data set USER.TIMETURNTRANSIT has 1085932 observations and 8
+      variables.
+NOTE: Compressing data set USER.TIMETURNTRANSIT decreased size by 21.99
+      percent.
+      Compressed is 830 pages; un-compressed would require 1064 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           2.77 seconds
+      cpu time            4.11 seconds
+
+
+
+NOTE: The data set USER.NT_CU_TIME_ALL has 7 observations and 2 variables.
+NOTE: Compressing data set USER.NT_CU_TIME_ALL decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           3.48 seconds
+      cpu time            3.02 seconds
+
+
+
+NOTE: There were 1512 observations read from the data set USER.ALLDATAPLUS.
+NOTE: There were 0 observations read from the data set USER.INTRANSIT.
+NOTE: The data set USER.INTRANSIT has 0 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: Input data set is empty.
+NOTE: The data set USER.INTRANSIT has 0 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 1451 observations read from the data set USER.LD_NT_TIME.
+NOTE: The data set USER.LD_NT_TIME has 1451 observations and 3 variables.
+NOTE: Compressing data set USER.LD_NT_TIME decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 0 observations read from the data set USER.INTRANSIT.
+NOTE: There were 1451 observations read from the data set USER.LD_NT_TIME.
+NOTE: The data set USER.INTRANSIT has 0 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 0 observations read from the data set USER.INTRANSIT.
+NOTE: The data set USER.INTRANSIT has 0 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+16MAR2014
+16MAR2014
+16MAR2014
+16MAR2014
+14APR2014
+14APR2014
+15JUN2014
+15JUN2014
+15MAY2014
+15MAY2014
+07OCT2014
+07OCT2014
+02APR2015
+02APR2015
+08MAY2014
+08MAY2014
+11MAR2015
+11MAR2015
+21FEB2015
+21FEB2015
+31JAN2015
+31JAN2015
+06MAR2015
+06MAR2015
+10SEP2014
+10SEP2014
+31OCT2014
+31OCT2014
+04NOV2014
+04NOV2014
+05NOV2014
+05NOV2014
+05NOV2014
+05NOV2014
+05NOV2014
+05NOV2014
+06MAY2015
+06MAY2015
+08FEB2015
+08FEB2015
+08FEB2015
+08FEB2015
+08FEB2015
+08FEB2015
+28MAR2015
+28MAR2015
+30APR2014
+30APR2014
+24MAR2015
+24MAR2015
+01JAN2015
+01JAN2015
+10AUG2014
+10AUG2014
+18MAY2014
+18MAY2014
+23DEC2014
+23DEC2014
+27NOV2014
+27NOV2014
+24NOV2014
+24NOV2014
+26JUL2014
+26JUL2014
+06MAY2014
+06MAY2014
+20JUN2014
+20JUN2014
+24MAR2014
+24MAR2014
+21MAR2014
+21MAR2014
+01JAN2015
+01JAN2015
+27DEC2014
+27DEC2014
+27DEC2014
+27DEC2014
+23DEC2014
+23DEC2014
+14JAN2015
+14JAN2015
+27DEC2014
+27DEC2014
+01JAN2015
+01JAN2015
+23DEC2014
+23DEC2014
+01JAN2015
+01JAN2015
+13MAR2015
+13MAR2015
+17MAR2015
+17MAR2015
+29DEC2014
+29DEC2014
+08APR2014
+08APR2014
+02FEB2015
+02FEB2015
+15FEB2015
+15FEB2015
+25APR2014
+25APR2014
+03JUN2014
+03JUN2014
+11JAN2015
+11JAN2015
+19MAR2015
+19MAR2015
+16MAY2014
+16MAY2014
+03JUN2014
+03JUN2014
+12JAN2015
+12JAN2015
+10MAR2015
+10MAR2015
+18JAN2015
+18JAN2015
+26OCT2014
+26OCT2014
+29SEP2014
+29SEP2014
+16FEB2014
+16FEB2014
+02NOV2014
+02NOV2014
+29SEP2014
+29SEP2014
+08SEP2014
+08SEP2014
+12JAN2015
+12JAN2015
+08JUN2014
+08JUN2014
+12MAY2014
+12MAY2014
+01DEC2014
+01DEC2014
+20APR2014
+20APR2014
+27OCT2014
+27OCT2014
+15SEP2014
+15SEP2014
+07SEP2014
+07SEP2014
+15DEC2014
+15DEC2014
+03AUG2014
+03AUG2014
+16DEC2014
+16DEC2014
+17FEB2014
+17FEB2014
+24NOV2014
+24NOV2014
+18JAN2015
+18JAN2015
+18MAY2014
+18MAY2014
+05OCT2014
+05OCT2014
+25DEC2014
+25DEC2014
+11AUG2014
+11AUG2014
+15JUN2014
+15JUN2014
+02MAR2014
+02MAR2014
+17AUG2014
+17AUG2014
+19JAN2015
+19JAN2015
+14APR2014
+14APR2014
+11JAN2015
+11JAN2015
+19MAY2014
+19MAY2014
+25AUG2014
+25AUG2014
+20JUL2014
+20JUL2014
+24FEB2014
+24FEB2014
+10MAR2014
+10MAR2014
+08DEC2014
+08DEC2014
+16JUN2014
+16JUN2014
+30NOV2014
+30NOV2014
+21SEP2014
+21SEP2014
+24AUG2014
+24AUG2014
+22JUN2014
+22JUN2014
+23FEB2014
+23FEB2014
+21JUL2014
+21JUL2014
+16NOV2014
+16NOV2014
+18AUG2014
+18AUG2014
+23JUN2014
+23JUN2014
+09JUN2014
+09JUN2014
+16MAR2014
+16MAR2014
+28APR2014
+28APR2014
+26DEC2014
+26DEC2014
+26MAY2014
+26MAY2014
+22DEC2014
+22DEC2014
+02JAN2015
+02JAN2015
+17MAR2014
+17MAR2014
+07APR2014
+07APR2014
+31MAR2014
+31MAR2014
+08APR2014
+08APR2014
+09FEB2015
+09FEB2015
+29MAR2015
+29MAR2015
+16MAY2014
+16MAY2014
+NOTE: There were 1104605 observations read from the data set USER.ALLDATAPLUS.
+NOTE: The data set USER.ISNOTIFY has 120 observations and 7 variables.
+NOTE: Compressing data set USER.ISNOTIFY decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           11.85 seconds
+      cpu time            5.78 seconds
+
+
+
+NOTE: There were 0 observations read from the data set USER.INTRANSIT.
+NOTE: There were 120 observations read from the data set USER.ISNOTIFY.
+NOTE: The data set USER.CURRENTORD has 120 observations and 8 variables.
+NOTE: Compressing data set USER.CURRENTORD decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 120 observations read from the data set USER.CURRENTORD.
+NOTE: The data set USER.CURRENTORD has 120 observations and 8 variables.
+NOTE: Compressing data set USER.CURRENTORD decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 7970 observations read from the data set USER.NT_CU_TIME.
+NOTE: The data set USER.NT_CU_TIME has 7970 observations and 4 variables.
+NOTE: Compressing data set USER.NT_CU_TIME decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 120 observations read from the data set USER.CURRENTORD.
+NOTE: There were 7970 observations read from the data set USER.NT_CU_TIME.
+NOTE: The data set USER.CURRENTORD has 120 observations and 9 variables.
+NOTE: Compressing data set USER.CURRENTORD decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 120 observations read from the data set USER.CURRENTORD.
+NOTE: The data set USER.CURRENTORD has 120 observations and 9 variables.
+NOTE: Compressing data set USER.CURRENTORD decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 7 observations read from the data set USER.NT_CU_TIME_ALL.
+NOTE: The data set USER.NT_CU_TIME_ALL has 7 observations and 2 variables.
+NOTE: Compressing data set USER.NT_CU_TIME_ALL decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 120 observations read from the data set USER.CURRENTORD.
+NOTE: There were 7 observations read from the data set USER.NT_CU_TIME_ALL.
+NOTE: The data set USER.CURRENTORD has 18 observations and 11 variables.
+NOTE: Compressing data set USER.CURRENTORD decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: Access by observation number not available.
+      Observation numbers will be counted by PROC PRINT.
+NOTE: No observations were selected from data set USER.CURRENTORD.
+NOTE: There were 0 observations read from the data set USER.CURRENTORD.
+      WHERE enddate=.;
+NOTE: PROCEDURE PRINT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+
+
+                                   Directory
+
+Libref         WORK
+Engine         V9
+Physical Name  C:\Users\JOHN~1.KRO\AppData\Local\Temp\SAS
+               Temporary Files\_TD7148_L-PC01XKEZ_
+Filename       C:\Users\JOHN~1.KRO\AppData\Local\Temp\SAS
+               Temporary Files\_TD7148_L-PC01XKEZ_
+WARNING: No matching members in directory.
+
+NOTE: The file WORK.CURRENTSUM1 (memtype=DATA) was not found, but appears on a
+      DELETE statement.
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 18 observations read from the data set USER.CURRENTORD.
+NOTE: The data set USER.CURRENTORD has 18 observations and 11 variables.
+NOTE: Compressing data set USER.CURRENTORD decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 18 observations read from the data set USER.CURRENTORD.
+NOTE: The data set USER.CURRENTSUM has 15 observations and 4 variables.
+NOTE: Compressing data set USER.CURRENTSUM decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+
+
+                                   Directory
+
+Libref         WORK
+Engine         V9
+Physical Name  C:\Users\JOHN~1.KRO\AppData\Local\Temp\SAS
+               Temporary Files\_TD7148_L-PC01XKEZ_
+Filename       C:\Users\JOHN~1.KRO\AppData\Local\Temp\SAS
+               Temporary Files\_TD7148_L-PC01XKEZ_
+WARNING: No matching members in directory.
+
+NOTE: The file WORK.MAJORDEL (memtype=DATA) was not found, but appears on a
+      DELETE statement.
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set
+      HUBLIB.MAJORFCSTSUMMARY.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 4 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 1.41 percent.
+      Compressed is 70 pages; un-compressed would require 71 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.23 seconds
+      cpu time            0.23 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 4 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 1.41 percent.
+      Compressed is 70 pages; un-compressed would require 71 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.24 seconds
+      cpu time            0.35 seconds
+
+
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: There were 1451 observations read from the data set USER.LD_NT_TIME.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 7 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 19.35 percent.
+      Compressed is 100 pages; un-compressed would require 124 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.45 seconds
+      cpu time            0.46 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 7 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 19.35 percent.
+      Compressed is 100 pages; un-compressed would require 124 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.36 seconds
+      cpu time            0.48 seconds
+
+
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: There were 7970 observations read from the data set USER.NT_CU_TIME.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 8 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 23.40 percent.
+      Compressed is 108 pages; un-compressed would require 141 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.49 seconds
+      cpu time            0.49 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 8 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 23.40 percent.
+      Compressed is 108 pages; un-compressed would require 141 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.36 seconds
+      cpu time            0.56 seconds
+
+
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: There were 7 observations read from the data set USER.NT_CU_TIME_ALL.
+NOTE: The data set USER.MAJORDEL has 143521 observations and 4 variables.
+NOTE: Compressing data set USER.MAJORDEL decreased size by 1.41 percent.
+      Compressed is 70 pages; un-compressed would require 71 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.37 seconds
+      cpu time            0.37 seconds
+
+
+                                   Directory
+
+                       Libref         USER
+                       Engine         V9
+                       Physical Name  c:\sasmodel\userlib
+                       Filename       c:\sasmodel\userlib
+
+
+                             Member
+     #  Name                 Type     File Size  Last Modified
+
+     1  A                    DATA        196608  07/10/2015 12:07:04
+     2  ALLDATAPLUS          DATA     586809344  07/10/2015 13:45:24
+     3  CURRENTORD           DATA        131072  07/10/2015 14:14:44
+     4  CURRENTSUM           DATA        131072  07/10/2015 14:14:44
+     5  DONE                 DATA        196608  07/10/2015 13:50:47
+     6  EST                  DATA        196608  07/10/2015 13:50:55
+     7  F                    DATA       4718592  07/10/2015 12:00:37
+     8  FCSTACTTOTS          DATA        196608  07/10/2015 13:50:56
+     9  FCSTANDHIST          DATA        196608  07/10/2015 13:50:56
+    10  FCSTORIGAVG          DATA        196608  07/10/2015 13:50:56
+    11  HD1                  DATA       5832704  07/10/2015 12:07:01
+    12  HWKS                 DATA        196608  07/10/2015 13:50:33
+    13  INORIGS              DATA        196608  07/10/2015 13:43:53
+    14  INTRANSIT            DATA        131072  07/10/2015 14:14:31
+    15  ISNOTIFY             DATA        131072  07/10/2015 14:14:43
+    16  LD_NT_TIME           DATA        131072  07/10/2015 14:14:31
+    17  MAJFCSTEVAL          DATA       9437184  07/10/2015 13:50:47
+    18  MAJFCSTSUM           DATA        196608  07/10/2015 13:50:48
+    19  MAJORDEL             DATA       4653056  07/10/2015 14:14:46
+    20  MAJORFCST            DATA        196608  07/10/2015 13:50:48
+    21  MAJORFCSTORIGAVG     DATA        196608  07/10/2015 13:50:48
+    22  MAJORFCSTSUMMARY     DATA       5898240  07/10/2015 13:50:34
+    23  MAJORFCSTSUMMARY2    DATA      12779520  07/10/2015 13:50:38
+    24  MAJORIGINFCSTACTTOT  DATA        196608  07/10/2015 13:50:47
+    25  MAJORORIGSUM         DATA      34799616  07/10/2015 13:47:31
+    26  MAJORORIGSUM2        DATA       6094848  07/10/2015 13:47:32
+    27  MAJORORIGSUM2PT5     DATA       4718592  07/10/2015 13:50:25
+    28  MAJORORIGSUM3        DATA        327680  07/10/2015 13:47:32
+    29  MAJORORIGSUM4        DATA        196608  07/10/2015 13:47:32
+    30  MAJORORIGSUMBRACKET  DATA        196608  07/10/2015 13:50:28
+    31  MAJORORIGSUMFULL     DATA       4718592  07/10/2015 13:50:29
+    32  MAJORPKU             DATA       4653056  07/10/2015 12:00:36
+    33  MFS                  DATA       5832704  07/10/2015 13:50:33
+    34  MFSB                 DATA       1114112  07/10/2015 10:11:15
+    35  MFS_WH               DATA       5898240  07/10/2015 10:26:41
+    36  MFS_WK               DATA       5898240  07/10/2015 11:19:48
+    37  MINFCSTACTSUM        DATA        196608  07/10/2015 13:50:56
+    38  MINFCSTEVAL          DATA        196608  07/10/2015 13:50:56
+    39  MINORFCSTORIGAVG     DATA        196608  07/10/2015 13:50:56
+    40  NT_CU_TIME           DATA        327680  07/10/2015 14:14:43
+    41  NT_CU_TIME_ALL       DATA        131072  07/10/2015 14:14:43
+    42  OTHERFCSTSUMMARY     DATA        655360  07/10/2015 13:50:53
+    43  OTHERFCSTSUMMARY2    DATA        393216  07/10/2015 13:50:51
+    44  OTHERFCSTSUMMARY3    DATA        196608  07/10/2015 13:50:51
+    45  OTHERFCSTSUMMARY4    DATA        196608  07/10/2015 13:50:51
+    46  OTHERFCSTSUMMARYX    DATA        720896  07/10/2015 13:50:54
+    47  OTHERFORECAST        DATA      31653888  07/10/2015 13:50:52
+    48  OTHERFORECAST2PT5    DATA        393216  07/10/2015 13:50:52
+    49  OTHERORIGSUM         DATA       1441792  07/10/2015 13:50:51
+    50  OTHERSUM             DATA        196608  07/10/2015 13:50:55
+    51  OTHERSUMBRACKET      DATA        196608  07/10/2015 13:50:52
+    52  OTHERSUMFULL         DATA        393216  07/10/2015 13:50:53
+    53  PRED                 DATA        196608  07/10/2015 13:50:56
+    54  PRED_ARIMA_FINAL     DATA        131072  07/09/2015 13:57:39
+    55  SUMLOADCNT           DATA        196608  07/10/2015 13:50:53
+    56  SUMZERO              DATA        655360  07/10/2015 13:50:53
+    57  TDEL                 DATA       4718592  07/10/2015 13:53:55
+    58  TIMETURNTRANSIT      DATA      54460416  07/10/2015 14:14:27
+
+NOTE: Deleting USER.TDEL (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.17 seconds
+      cpu time            0.17 seconds
+
+
+
+NOTE: There were 143521 observations read from the data set USER.MAJORDEL.
+NOTE: There were 15 observations read from the data set USER.CURRENTSUM.
+NOTE: The data set USER.TDEL has 143536 observations and 4 variables.
+NOTE: Compressing data set USER.TDEL decreased size by 1.41 percent.
+      Compressed is 70 pages; un-compressed would require 71 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.22 seconds
+      cpu time            0.23 seconds
+
+
+6413  %include "c:\sasmodel\v3\5_final processing.sas";
+NOTE: Compressing data set USER.AVGOUT decreased size by 0.00 percent.
+      Compressed is 3 pages; un-compressed would require 3 pages.
+NOTE: Table USER.AVGOUT created, with 5006 rows and 4 columns.
+
+NOTE: Compressing data set USER.PAST2WKS increased size by 25.00 percent.
+      Compressed is 5 pages; un-compressed would require 4 pages.
+NOTE: Table USER.PAST2WKS created, with 5974 rows and 6 columns.
+
+NOTE: Compressing data set USER.AVGOUTORIGONLY decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: Table USER.AVGOUTORIGONLY created, with 421 rows and 4 columns.
+
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           9.38 seconds
+      cpu time            0.14 seconds
+
+
+
+NOTE: There were 5006 observations read from the data set USER.AVGOUT.
+NOTE: There were 421 observations read from the data set USER.AVGOUTORIGONLY.
+NOTE: The data set USER.AVGOUT2 has 5427 observations and 5 variables.
+NOTE: Compressing data set USER.AVGOUT2 decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 0 observations read from the data set HUBLIB.OTHERDEMANDFCST.
+NOTE: The data set USER.ZZOTHFCST has 0 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 5712 observations read from the data set
+      HUBLIB.MAJORDEMANDFCST.
+NOTE: There were 0 observations read from the data set USER.ZZOTHFCST.
+NOTE: The data set USER.PREFCSTOUTPUT has 5712 observations and 5 variables.
+NOTE: Compressing data set USER.PREFCSTOUTPUT decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.06 seconds
+
+
+NOTE: Compressing data set USER.FINALFCSTOUTPUT decreased size by 0.00 percent.
+      Compressed is 5 pages; un-compressed would require 5 pages.
+NOTE: Table USER.FINALFCSTOUTPUT created, with 5712 rows and 6 columns.
+
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.09 seconds
+      cpu time            0.09 seconds
+
+
+
+NOTE: Missing values were generated as a result of performing an operation on
+      missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      640 at 6515:55
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.FINALFCSTOUTPUT has 5712 observations and 7 variables.
+NOTE: Compressing data set USER.FINALFCSTOUTPUT decreased size by 0.00 percent.
+      Compressed is 5 pages; un-compressed would require 5 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+
+WARNING: The variable wkendest in the DROP, KEEP, or RENAME list has never been
+         referenced.
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.SUNFRI has 816 observations and 3 variables.
+NOTE: Compressing data set USER.SUNFRI decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.03 seconds
+
+
+
+WARNING: The variable wkendest in the DROP, KEEP, or RENAME list has never been
+         referenced.
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.SUNMON has 816 observations and 3 variables.
+NOTE: Compressing data set USER.SUNMON decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+WARNING: The variable wkendest in the DROP, KEEP, or RENAME list has never been
+         referenced.
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.SATFRI has 816 observations and 3 variables.
+NOTE: Compressing data set USER.SATFRI decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.03 seconds
+
+
+
+WARNING: The variable wkendest in the DROP, KEEP, or RENAME list has never been
+         referenced.
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.SATMON has 816 observations and 3 variables.
+NOTE: Compressing data set USER.SATMON decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.04 seconds
+
+
+ERROR: The file WORK.SUNFRI (memtype=(DATA VIEW)) was not found, but appears on
+       a MODIFY statement.
+NOTE: Statements not processed because of errors noted above.
+ERROR: The file WORK.SUNMON (memtype=(DATA VIEW)) was not found, but appears on
+       a MODIFY statement.
+NOTE: Statements not processed because of errors noted above.
+ERROR: The file WORK.SATFRI (memtype=(DATA VIEW)) was not found, but appears on
+       a MODIFY statement.
+NOTE: Statements not processed because of errors noted above.
+ERROR: The file WORK.SATMON (memtype=(DATA VIEW)) was not found, but appears on
+       a MODIFY statement.
+
+NOTE: Statements not processed because of errors noted above.
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.10 seconds
+      cpu time            0.06 seconds
+
+
+
+
+NOTE: There were 816 observations read from the data set USER.SUNFRI.
+NOTE: The data set USER.SUNFRI has 816 observations and 3 variables.
+NOTE: Compressing data set USER.SUNFRI decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 816 observations read from the data set USER.SUNMON.
+NOTE: The data set USER.SUNMON has 816 observations and 3 variables.
+NOTE: Compressing data set USER.SUNMON decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 816 observations read from the data set USER.SATFRI.
+NOTE: The data set USER.SATFRI has 816 observations and 3 variables.
+NOTE: Compressing data set USER.SATFRI decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 816 observations read from the data set USER.SATMON.
+NOTE: The data set USER.SATMON has 816 observations and 3 variables.
+NOTE: Compressing data set USER.SATMON decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 816 observations read from the data set USER.SUNFRI.
+NOTE: There were 816 observations read from the data set USER.SUNMON.
+NOTE: There were 816 observations read from the data set USER.SATFRI.
+NOTE: There were 816 observations read from the data set USER.SATMON.
+NOTE: The data set USER.WEEKEND has 1632 observations and 3 variables.
+NOTE: Compressing data set USER.WEEKEND decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 1632 observations read from the data set USER.WEEKEND.
+NOTE: The data set USER.WEEKEND has 1632 observations and 4 variables.
+NOTE: Compressing data set USER.WEEKEND decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 1632 observations read from the data set USER.WEEKEND.
+NOTE: The data set USER.WEEKEND has 1632 observations and 4 variables.
+NOTE: Compressing data set USER.WEEKEND decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.FINALFCSTOUTPUT has 5712 observations and 7 variables.
+NOTE: Compressing data set USER.FINALFCSTOUTPUT decreased size by 0.00 percent.
+      Compressed is 5 pages; un-compressed would require 5 pages.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: There were 1632 observations read from the data set USER.WEEKEND.
+NOTE: The data set USER.FINALFCSTOUTPUT3 has 5712 observations and 8 variables.
+NOTE: Compressing data set USER.FINALFCSTOUTPUT3 decreased size by 16.67
+      percent.
+      Compressed is 5 pages; un-compressed would require 6 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.04 seconds
+
+
+
+WARNING: The variable fcst in the DROP, KEEP, or RENAME list has never been
+         referenced.
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.FINALFCSTOUTPUT has 5712 observations and 5 variables.
+NOTE: Compressing data set USER.FINALFCSTOUTPUT decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.07 seconds
+      cpu time            0.07 seconds
+
+
+
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.FINALFCSTOUTPUT has 5712 observations and 4 variables.
+NOTE: Compressing data set USER.FINALFCSTOUTPUT decreased size by 0.00 percent.
+      Compressed is 3 pages; un-compressed would require 3 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.FINALFCSTOUTPUT has 5712 observations and 6 variables.
+NOTE: Compressing data set USER.FINALFCSTOUTPUT decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.07 seconds
+      cpu time            0.07 seconds
+
+
+
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.FINALFCSTOUTPUT has 5712 observations and 6 variables.
+NOTE: Compressing data set USER.FINALFCSTOUTPUT decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.03 seconds
+
+
+
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.FINALFCSTOUTPUT has 5712 observations and 6 variables.
+NOTE: Compressing data set USER.FINALFCSTOUTPUT decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 5974 observations read from the data set USER.PAST2WKS.
+NOTE: The data set USER.PAST2WKS has 5974 observations and 6 variables.
+NOTE: Compressing data set USER.PAST2WKS decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.07 seconds
+
+
+
+NOTE: There were 5974 observations read from the data set USER.PAST2WKS.
+NOTE: The data set USER.PAST2WKS has 5974 observations and 6 variables.
+NOTE: Compressing data set USER.PAST2WKS decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 5974 observations read from the data set USER.PAST2WKS.
+NOTE: The data set USER.PAST2WKS has 5974 observations and 6 variables.
+NOTE: Compressing data set USER.PAST2WKS decreased size by 0.00 percent.
+      Compressed is 4 pages; un-compressed would require 4 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: There were 5974 observations read from the data set USER.PAST2WKS.
+NOTE: There were 5712 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set USER.FINALFCSTOUTPUT has 11686 observations and 6 variables.
+NOTE: Compressing data set USER.FINALFCSTOUTPUT decreased size by 0.00 percent.
+      Compressed is 8 pages; un-compressed would require 8 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.05 seconds
+      cpu time            0.04 seconds
+
+
+NOTE: Libref DWPA was successfully assigned as follows:
+      Engine:        ODBC
+      Physical Name: dw_pa
+
+NOTE: Deleting DWPA.big_box_demand_forecast_2_weeks (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           2.24 seconds
+      cpu time            0.04 seconds
+
+
+
+NOTE: SAS variable labels, formats, and lengths are not written to DBMS tables.
+NOTE: There were 11686 observations read from the data set USER.FINALFCSTOUTPUT.
+NOTE: The data set DWPA.big_box_demand_forecast_2_weeks has 11686 observations
+      and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2:14.52
+      cpu time            2.24 seconds
+
+
+6810  %include "c:\sasmodel\v3\6_Apply Manual Adjustments.sas";
+6811  %include "c:\sasmodel\v3\7_Rebuild Final Table.sas";
+
+NOTE: There were 142879 observations read from the data set USER.F.
+NOTE: The data set USER.COMBDEL has 142879 observations and 4 variables.
+NOTE: Compressing data set USER.COMBDEL decreased size by 1.41 percent.
+      Compressed is 70 pages; un-compressed would require 71 pages.
+NOTE: DATA statement used (Total process time):
+      real time           0.41 seconds
+      cpu time            0.37 seconds
+
+
+NOTE: Libref DWPA was successfully assigned as follows:
+      Engine:        ODBC
+      Physical Name: dw_pa
+NOTE: A CASE expression has no ELSE clause. Cases not accounted for by the WHEN
+      clauses will result in a missing value for the CASE expression.
+NOTE: Compressing data set USER.FPKU decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: Table USER.FPKU created, with 330 rows and 7 columns.
+
+NOTE: A CASE expression has no ELSE clause. Cases not accounted for by the WHEN
+      clauses will result in a missing value for the CASE expression.
+NOTE: Compressing data set USER.FDEL decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: Table USER.FDEL created, with 299 rows and 7 columns.
+
+NOTE: Compressing data set USER.FUPL decreased size by 0.00 percent.
+      Compressed is 1 pages; un-compressed would require 1 pages.
+NOTE: Table USER.FUPL created, with 629 rows and 7 columns.
+
+NOTE: Table DWPA.fc_pku_del has been dropped.
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.57 seconds
+      cpu time            0.21 seconds
+
+
+
+NOTE: SAS variable labels, formats, and lengths are not written to DBMS tables.
+NOTE: There were 629 observations read from the data set USER.FUPL.
+NOTE: The data set DWPA.fc_pku_del has 629 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.88 seconds
+      cpu time            0.14 seconds
+
+
+

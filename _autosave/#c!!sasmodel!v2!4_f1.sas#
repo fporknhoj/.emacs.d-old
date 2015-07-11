@@ -1,0 +1,459 @@
+*%include 'c:\sasmodel\v2\4.1_fcst_turntime.sas';
+
+/* proc sql; */
+/*     create table work.in_transit as  */
+/*         select 	* */
+/*         ,		lastevdt = datepart(lastdt) */
+/*         from 	work.alldataplus a */
+/*         join	hublib.transitmedian b */
+/*         on 		a.fcstorig=b.fcstorig and a.fcstdest=b.fcstdest */
+/*         join 	hublib. */
+/*         where 	lastdatedef = 'LD' */
+/*         and 	lastevdt >= intnx('day',&today,-&fcstoffset-&transupdays); */
+
+/*     alter table work.in_transit  */
+/*         add column projnotify date9.; */
+
+/*     update work.in_transit */
+/*         set projnotify = intnx('day',lastevdt,loadtonotify50) */
+/*         where lastevdate >= intnx('day',&today,-&fcstoffset-&transupdays); */
+
+/*     create table work.in_turnaround */
+/*         select 	* */
+/*         ,		lastevdate  */
+/*         from	work.alldataplus */
+/*         where	lastevdate >= intnx('day',&today,-&fcstoffset-&transupdays); */
+
+/*     /\* alter table work.in_turnaround *\/ */
+/*     /\*     add column projnotify date9.; *\/ */
+/* quit; */
+
+
+
+
+
+
+
+
+proc sort data= work.alldataplus;
+    by eqid loaddt;
+run;
+
+/* Boxes in transit first */
+
+data work.intransit;
+    set work.alldataplus;
+    if lastdtdef EQ 'LD';
+    lastevdate = datepart(lastdt);
+    if lastevdate GE intnx('day',&today,-1*(&fcstoffset + &transupdays));    
+run;
+
+proc sort data= work.intransit;
+    by fcstorig fcstdest;
+run;
+
+data work.transit;
+    merge work.intransit hublib.transitmedian;
+    if loadtonotify50 EQ . then loadtonotify50 = 6;
+    projnotifydt = intnx('day',lastevdate,loadtonotify50);
+    if lastevdate GE intnx('day',&today,-1*(&fcstoffset + &transupdays));
+run;
+
+data work.turn;
+    set work.alldataplus;
+    lastevdate = datepart(lastdt);
+    if lastevdate GE intnx('day',&today,-1*(&fcstoffset + &transupdays));
+    if lastdtdef in ('ET','AR');
+    if lastdtdef EQ 'AR' then projnotifydt = notifydt;
+    if fleetavailableflag EQ 'Y';
+run;
+
+data work.move;
+    set work.transit work.turn;
+    format notifydt date9. projnotifyday date9.;
+    notifydow = weekday(projnotifydt);
+    *projnotifyday = projnotifydt;
+    if projnotifydt LT intnx('day',&today,-4) then
+        projnotifydt = intnx('day',&today,-4);
+run;
+
+proc sort data= work.move;
+    by fcstdest notifydow destcompname;
+    run;
+
+proc sort data= hublib.turntimedowdist;
+    by fcstdest notifydow;
+run;
+
+data work.plusturntime;
+    merge work.move hublib.turntimedowdist;
+    by fcstdest notifydow;
+run;
+
+data work.supply_moveorturn;
+    set work.plusturntime;
+    format supplydt date9. notifyday date9. projnotifydt date9.;
+    supplydt = intnx('day',projnotifydt,nottounloaddays);
+    if supplydt GT &today;
+    loads = percent/100;
+run;
+
+proc export data= work.supply_moveorturn outfile= 'c:\moveturn.csv' dbms= csv replace;
+run;
+
+data _null_;
+set work.supply_moveorturn;
+format lastevdate date9.;
+put lastevdate;
+run;
+
+data work.supply_moveorturn;
+set work.supply_moveorturn;
+asdf = intnx('day',lastevdate,loadtonotify50);
+run;
+
+proc freq data= work.supply_moveorturn;
+format asdf date9.;
+table asdf;
+run;
+
+proc freq data= work.supply_moveorturn;
+table loads;
+run;
+
+
+
+
+
+
+
+
+
+
+/* Current moving boxes complete */
+/*    Forecasted supply boxes    */
+
+/* step 1 */
+/*     make adjustment to major demand fcst */
+/*     based on weekend and manual adjustments */
+
+proc sql;
+    connect to odbc as dw2 (datasrc="DW2");
+    create table work.avgout as select * from connection to dw2 
+        (
+        select OriginRampSubMarket as fcstorig 
+        ,      DestinationRampSubMarket as fcstdest 
+        ,      datepart(weekday,DSRDate) as dow
+        ,      convert(float,sum(volume))/8 as loads
+        from OperationalSummary
+        where DSRDate between DATEADD(MONTH, -2, current_timestamp) and current_timestamp
+        and transportationmode = 'iml'
+        and transportationsubmode = ''
+        and origincity <> ''
+        and destinationcity <> ''
+        and originrampsubmarket <> ''
+        and destinationrampsubmarket <> ''
+        group by OriginRampSubMarket
+        ,        DestinationRampSubMarket
+        ,        datepart(weekday,DSRDate)
+        );
+
+    create table work.past2wks as select * from connection to dw2
+        (
+        select OriginRampMarket
+        ,      DestinationRampMarket
+        ,      OriginRampSubMarket
+        ,      DestinationRampSubMarket
+        ,      convert(date,DSRDate) as ForecastDate
+        ,      SUM(volume) as Volume
+        from OperationalSummary
+        where DSRDate >= dateadd(WEEK ,-2 ,GETDATE())
+        and TransportationMode in ('IML')
+        and transportationsubmode=''
+        and origincity<>''
+        and destinationcity<>''
+        and orderstatus in ('DSP','RBL','DLV')
+        and EquipmentCategory <> 'ISO'
+        and not(loadnumber is null)
+        group by OriginRampMarket
+        ,        DestinationRampMarket
+        ,        OriginRampSubMarket
+        ,        DestinationRampSubMarket
+        ,        DSRDate
+
+        );
+
+    disconnect from dw2;
+
+    *create table for zzoth destinations;
+    create table work.avgoutorigonly as (
+        select fcstorig as fcstorig
+        ,      "All" as fcstdest
+        ,      dow as dow
+        ,      avg(loads)
+        from work.avgout
+        group by fcstorig
+        ,        dow 
+        );
+quit;
+
+*Combine od and o only average out times;
+data work.avgout2;
+    set work.avgout work.avgoutorigonly;
+run;
+
+*set dest column for small market fcst;
+data work.zzothfcst;
+    retain fcst fcstorig fcstdest fcstdt;
+    fcstdest="All";
+    set HUBLIB.otherdemandfcst;
+run;
+
+*Format output data;
+data work.prefcstoutput;
+    set hublib.majordemandfcst zzothfcst;
+    est = round(fcst,.01);
+    if fcst < 0 then est = 0;
+run;
+
+proc sql;
+    *join table of historical volumes with forecast output tables;
+    create table work.finalfcstoutput as (
+        select a.*
+        ,      b.loads as act_avg_vol
+        from work.prefcstoutput a
+        left join work.avgout2 b 
+        on a.fcstorig = b.fcstorig and
+        a.fcstdest = b.fcstdest and
+        weekday(a.fcstdt) = b.dow
+        );
+quit;
+
+
+*do weekend adjustments;
+data work.finalfcstoutput;
+    set work.finalfcstoutput;
+    if weekday(fcstdt) in (1,7) then weekendest = (est-act_avg_vol)/2;
+    if weekday(fcstdt) in (1,7) then est = act_avg_vol;
+run;
+data sunfri;
+    set work.finalfcstoutput;
+    keep fcstorig fcstdest fcstdt wkendest;
+    if weekday(fcstdt) = 1;
+    fcstdt = intnx('day',fcstdt,-2);
+data sunmon;
+    set work.finalfcstoutput;
+    keep fcstorig fcstdest fcstdt wkendest;
+    if weekday(fcstdt) = 1;
+    fcstdt = intnx('day',fcstdt,1);
+data satfri;
+    set work.finalfcstoutput;
+    keep fcstorig fcstdest fcstdt wkendest;
+    if weekday(fcstdt) = 7;
+    fcstdt = intnx('day',fcstdt,-1);
+data satmon;
+    set work.finalfcstoutput;
+    keep fcstorig fcstdest fcstdt wkendest;
+    if weekday(fcstdt) = 7;
+    fcstdt = intnx('day',fcstdt,2);
+run;
+proc datasets library=work noprint;
+    modify sunfri;
+    rename wkendest=sunfri;
+    modify sunmon;
+    rename wkendest=sunmon;
+    modify satfri;
+    rename wkendest=satfri;
+    modify satmon;
+    rename wkendest=satmon;
+quit;
+proc sort data=sunfri;
+    by fcstorig fcstdest fcstdt;
+proc sort data=sunmon;
+    by fcstorig fcstdest fcstdt;
+proc sort data=satfri;
+    by fcstorig fcstdest fcstdt;
+proc sort data=satmon;
+    by fcstorig fcstdest fcstdt;
+run;
+data weekend;
+    merge sunfri sunmon satfri satmon;
+    by fcstorig fcstdest fcstdt;
+run;
+data weekend;
+    set weekend;
+    if sunfri eq . then sunfri = 0;
+    if sunmon eq . then sunmon = 0;
+    if satfri eq . then satfri = 0;
+    if satmon eq . then satmon = 0;
+    monest = satmon+sunmon;
+    friest = satfri+sunfri;
+    wkendnew = satmon+satfri+sunmon+sunfri;
+    keep fcstorig fcstdest fcstdt wkendnew;
+run;
+proc sort data=weekend;
+    by fcstorig fcstdest fcstdt;
+proc sort data=work.finalfcstoutput;
+    by fcstorig fcstdest fcstdt;
+run;
+data work.finalfcstoutput3;
+    set work.finalfcstoutput;
+    merge work.finalfcstoutput(in=in1) weekend;
+    by fcstorig fcstdest fcstdt;
+run;
+data work.finalfcstoutput;
+    set work.finalfcstoutput;
+    if est = . then est = 0;
+    if wkendnew = . then wkendnew = 0;
+    est = est + wkendnew;
+    rename fcst = type;
+    type = "Predicted";
+    keep type fcstorig fcstdest fcstdt est;
+run;
+
+
+*order vars;
+data work.finalfcstoutput;
+    retain fcstorig fcstdest fcstdt est;
+    set work.finalfcstoutput;
+    keep fcstorig fcstdest fcstdt est;
+*create RampMarket Variables;
+data work.finalfcstoutput;
+    set work.finalfcstoutput;
+    if fcstorig in ('ATLAR','ATLAL') then OriginRampMarket = 'ATLA ';
+    else if fcstorig in ('DALL ','DALR ') then OriginRampMarket = 'DALAS';
+    else if fcstorig in ('CHOH ','CHIN ','CHMI ','CHWI ','CHIL ','CHMET','CHCAN') then OriginRampMarket = 'CHGO ';
+    else OriginRampMarket = fcstorig;
+    if fcstdest in ('ATLAR','ATLAL') then DestinationRampMarket = 'ATLA ';
+    else if fcstdest in ('DALL ','DALR ') then DestinationRampMarket = 'DALAS';
+    else if fcstdest in ('CHOH ','CHIN ','CHMI ','CHWI ','CHIL ','CHMET','CHCAN') then DestinationRampMarket = 'CHGO ';
+    else DestinationRampMarket = fcstdest;
+*rename other variables;
+data work.finalfcstoutput;
+    set work.finalfcstoutput;
+    rename fcstorig = OriginRampSubMarket;
+    rename fcstdest = DestinationRampSubMarket;
+    rename fcstdt = ForecastDate;
+    rename est = Volume;
+*reorder variables;
+data work.finalfcstoutput;
+    retain OriginRampMarket DestinationRampMarket 
+        OriginRampSubMarket DestinationRampSubMarket 
+        ForecastDate Volume;
+    set work.finalfcstoutput;
+run;
+
+*Change date format from text to number on past data so union will work;
+data work.past2wks;
+    set work.past2wks;
+    ForecastDate2 = input(strip(ForecastDate),yymmdd10.);
+    drop ForecastDate;
+data work.past2wks;
+    set work.past2wks;
+    rename ForecastDate2 = ForecastDate;
+*drop ForecastDate2;
+data work.past2wks;
+    retain OriginRampMarket DestinationRampMarket 
+        OriginRampSubMarket DestinationRampSubMarket
+        ForecastDate Volume;
+    set work.past2wks;
+    format ForecastDate date9.;
+run;
+
+*stack actuals and forecasted volumes;
+data work.finalfcstoutput;
+    set work.past2wks work.finalfcstoutput;
+run;
+
+data hublib.finaldemand;
+    set work.finalfcstoutput;
+run;
+
+/* Begin data prep for using major demand forecasts for supply predictions */
+
+data work.supply_majordemand1;
+    set hublib.finaldemand;
+    keep OriginRampSubMarket DestinationRampSubMarket ForecastDate Volume;
+    rename OriginRampSubMarket = fcstorig
+        DestinationRampSubMarket = fcstdest
+        ForecastDate = fcstdt;
+    if fcstdt GE intnx('day',&today,-&fcstoffset);
+    if fcstdest  NE 'ZZOTH';
+run;
+
+proc sort data= work.supply_majordemand1;
+    by fcstdest fcstorig fcstdt;
+run;
+
+proc sort data= hublib.transitmedian;
+    by fcstdest fcstorig;
+run;
+
+proc sort data= hublib.dowturntime;
+    by fcstdest fcstorig;
+run;
+
+proc sort data= hublib.destturntime;
+    by fcstdest fcstorig;
+run;
+
+data work.supply_majordemand_transits;
+    merge work.supply_majordemand1 hublib.transitmedian;
+    by fcstdest fcstorig;
+    if fcstdt NE .;
+    majmkt = Volume;
+    notifyday = intnx('day',fcstdt,loadtonotify50);
+    notifydow = weekday(notifyday);
+run;
+
+proc sort data= work.supply_majordemand_transits;
+    by fcstdest notifydow;
+run;
+
+proc sort data= hublib.turntimedowdist;
+    by fcstdest notifydow;
+run;
+
+data work.supply_majordemand_turns;
+    merge work.supply_majrodemand_transits hublib.turntimedowdist;
+run;
+
+proc sort data= work.supply_majordemand_turns;
+    by fcstdest notifydow;
+run;
+
+data work.majordemandsupply;
+    set work.supply_majordemand_turns;
+    format supplydt date9.;
+    by fcstdest notifydow;
+    supplydt = intnx('day',fcstdt, loadtonotify50+nottounloaddays );
+    loads = loads * percent / 100;
+run;
+
+proc sort data= work.majorsupply;
+    by fcstdest supplydt;
+run;
+
+proc means data= work.majorsupply;
+    by fcstdest supplydt;
+    var loads;
+    output out=work.wtf sum=;
+run;
+
+proc export data= work.majorsupply outfile='c:\majorsupply.csv' dbms=csv replace;
+run;
+
+
+/* proc sort data= data=work.supply_mojor; */
+/*     by fcstorig fcstdest fcstdt; */
+/* run; */
+
+
+
+
+
+
+
+
+
+

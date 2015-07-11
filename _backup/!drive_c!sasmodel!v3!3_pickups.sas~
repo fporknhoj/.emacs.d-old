@@ -1,0 +1,780 @@
+
+proc contents data=majorfcstsummary;
+run;
+*proc datasets library=hublib;
+*delete holidays;
+*run;
+
+proc printto file= 'c:\results';run;
+
+*********************************************************************;
+*** Forecast * Major Orgins *****************************************;
+*********************************************************************;
+
+	************************************************;
+	* Run Demand main demand Forecast ;
+    * for prototype, CH origins: for production, all major OD's ;
+	************************************************;
+
+data user.majorfcstsummary;
+    set hublib.majorfcstsummary ;
+run;
+
+	************************************************;
+	* set holidays to missing values;
+    * select subset of historical data;
+    * restrict to forecast range;
+	************************************************;
+
+proc sort data=user.majorfcstsummary;by fcstdt;
+proc sort data=hublib.holidays;by fcstdt;
+
+data user.majorfcstsummary;
+    merge USER.majorfcstsummary hublib.holidays;
+    by fcstdt;
+    if fcstdt >= &today - &histrange and fcstdt <= &today - &fcstoffset - 1;
+    if holiday ~= . then count = .;
+    if fcstorig ~="" and fcstdest ~="";
+run;
+
+**************************************************
+gen holiday week dummy ***************************
+**************************************************;
+
+* Create Holiday Week Dummy Variable ;
+data mfs;
+	set hublib.majorfcstsummary;
+	woy = year(fcstdt) * 100 + week(fcstdt);
+	holidayweek = 0;
+proc sort data=mfs; by fcstdt;
+proc sort data=hublib.holidays; by fcstdt;
+data hwks;
+	merge mfs hublib.holidays;
+	by fcstdt;
+	if desc ne "";
+	holidayweek2=1;
+	keep woy holidayweek2;
+proc sort data=mfs; by woy;
+proc sort data=hwks nodupkey; by woy; run;
+data majorfcstsummary;
+	merge hwks mfs ;
+	by woy;
+	if holidayweek2 ne . then holidayweek = holidayweek2;
+	drop holidayweek2;
+run;
+
+**************************************************
+holiday week dummy generated *********************
+**************************************************;
+
+
+proc sort DATA=user.majorfcstsummary ;
+    by fcstorig fcstdest fcstdt;
+run;
+
+data user.majorfcstsummary2;
+    set user.majorfcstsummary ;
+    by fcstorig fcstdest;
+    if first.fcstorig or first.fcstdest then
+    do fcstdt = &today - &fcstoffset  to &today - &fcstoffset + &fcsthoriz ; holiday = .; desc=""; count=.; output; end;
+    else output;
+run;
+
+proc sort DATA=user.majorfcstsummary2 ;
+    by fcstorig fcstdest fcstdt;
+run;
+
+**************************************************
+create forecast RHS variables ********************
+**************************************************;
+data user.majorfcstsummary2;
+    set user.majorfcstsummary2;
+    by fcstorig fcstdest;
+    dow = weekday(fcstdt);
+    mon = month(fcstdt);
+	yr = year(fcstdt);
+
+	if first.fcstorig or first.fcstdest then
+	    time = 1; else time+1;
+    if dow= 2 then monday=1; else monday=0;
+    if dow= 3 then tuesday=1; else tuesday=0;
+    if dow= 4 then wednesday=1; else wednesday=0;
+    if dow= 5 then thursday=1; else thursday=0;
+    if dow= 6 then friday=1; else friday=0;
+    if dow= 7 then saturday=1; else saturday=0;
+
+	*if dow= 2 or dow= 3 or dow= 4 or dow= 5 or dow= 6 then weekday=1;
+	*else weekday = 0;
+	*if dow= 7 or dow = 1 then weekend = 1;
+	*else weekend = 0;
+
+	yesterday = lag(count);
+
+    if mon = 1 then jan=1; else jan=0;
+    if mon = 2 then feb=1; else feb=0;
+    if mon = 3 then mar=1; else mar=0;
+    if mon = 4 then apr=1; else apr=0;
+    if mon = 5 then may=1; else may=0;
+    if mon = 6 then jun=1; else jun=0;
+    if mon = 7 then jul=1; else jul=0;
+    if mon = 8 then aug=1; else aug=0;
+    if mon = 9 then sep=1; else sep=0;
+    if mon = 10 then oct=1; else oct=0;
+    if mon = 11 then nov=1; else nov=0;
+
+	if yr = 2013 then y13=1; else y13=0;
+	if yr = 2014 then y14=1; else y14=0;
+	if yr = 2015 then y15=1; else y15=0;
+
+    if fcstorig ne "" and fcstdest ne "";
+run;
+
+**************************************************
+add dummy variable for driver model change *******
+**************************************************;
+data user.majorfcstsummary2;
+    set user.majorfcstsummary2;
+	if fcstdt gt '15sep2014'd and fcstdt lt '30nov2014'd and fcstorig='LOSAN' or
+	   fcstdt gt '15sep2014'd and fcstdt lt '30nov2014'd and fcstdest='LOSAN' or
+	   fcstdt gt '15sep2014'd and fcstdt lt '30nov2014'd and fcstorig='STKTN' or
+	   fcstdt gt '15sep2014'd and fcstdt lt '30nov2014'd and fcstdest='STKTN' then driver = 1;
+	else driver = 0;
+	run;
+
+proc sort data=user.majorfcstsummary2 ;
+    by fcstorig fcstdest fcstdt ;
+run;
+
+data user.majorfcstsummary2;
+set user.majorfcstsummary2;
+if fcstdt > intnx('MONTH',date(),-2) then volcontrib=0;
+else volcontrib=1;
+run;
+
+proc freq data=majorfcstsummary2;
+table volcontrib;
+run;
+
+************************************************
+Major Market Demand Estimation *****************
+************************************************;
+
+title 'major markets';
+
+proc autoreg data=user.majorfcstsummary2 outest=est ;
+    by fcstorig fcstdest;
+    model count = time volcontrib holidayweek
+        monday tuesday wednesday thursday friday saturday
+       jan feb mar apr may jun jul aug sep oct nov
+        / nlag=7 method=ml backstep archtest;
+    output out=pred p=fcst pm=ytrend
+        lcl=lcl ucl=ucl;
+run;
+
+************************************************
+Estimation Expiermentation *********************
+************************************************;
+
+/*proc autoreg data=user.majorfcstsummary2 outest=estydrv ;
+    by fcstorig fcstdest;
+	*where fcstorig="ATLAL" and fcstdest="CHMET";
+	where fcstorig in ('STKTN','LOSAN') or fcstdest in ('STKTN','LOSAN');
+    model count = time volcontrib holidayweek driver
+		monday tuesday wednesday thursday friday saturday
+		jan feb mar apr may jun jul aug sep oct nov
+        / nlag=7 method=ml backstep archtest garch=(p=1,q=1);
+    output out=pred p=fcst pm=ytrend
+        lcl=lcl ucl=ucl;
+run;
+proc autoreg data=user.majorfcstsummary2 outest=estndrv ;
+    by fcstorig fcstdest;
+	where fcstorig not in ('STKTN','LOSAN') or fcstdest not in ('STKTN','LOSAN');
+	model count = time volcontrib holidayweek
+		monday tuesday wednesday thursday friday saturday
+		jan feb mar apr may jun jul aug sep oct nov
+        / nlag=7 method=ml backstep archtest garch=(p=1,q=1);
+    output out=pred p=fcst pm=ytrend
+        lcl=lcl ucl=ucl;
+run;
+
+data est;
+set estydrv estndrv;
+run;*/
+
+/*proc timeseries data=majorfcstsummary2 outspectra=spectra;
+	where fcstorig="ATLAL" and fcstdest="CHMET";
+	id fcstdt interval=day accumulate=total;
+	var count;
+	run;
+proc forecast data=majorfcstsummary2;
+	where fcstorig="ATLAL" and fcstdest="CHMET";
+run;
+proc arima data=majorfcstsummary2;
+where fcstorig="ATLAL" and fcstdest="CHMET";*/
+
+/*proc arima data=majorfcstsummary2;
+where fcstorig="ATLAL" and fcstdest="CHMET";
+identify var=count(7,12) ESACF;
+estimate p=7;
+forecast out=pred_arima id=fcstdt lead=14;
+run;*/
+
+/*proc arima data=majorfcstsummary2;
+where fcstorig="ATLAL" and fcstdest="CHMET";
+by fcstorig fcstdest;
+identify var=count(7) ESACF crosscorr=time;
+estimate p=1 q=2 ;
+forecast out=pred_arima id=fcstdt lead=14;
+run;
+quit;*/
+
+/*data pred_arima_fin;
+set pred_arima;
+run;*/
+
+/*proc arima data=majorfcstsummary2;
+where fcstorig="ATLAL" and fcstdest="CHMET";
+identify  var = count crosscorr = (time volcontrib
+monday tuesday wednesday thursday friday saturday
+jan feb mar apr may jun jul aug sep oct nov );
+estimate  p=7 time volcontrib
+monday tuesday wednesday thursday friday saturday
+jan feb mar apr may jun jul aug sep oct nov
+backlim;
+run;*/
+
+/*proc autoreg data=user.majorfcstsummary2 outest=est ;
+    by fcstorig fcstdest;
+    model count = time volcontrib
+        monday tuesday wednesday thursday friday saturday
+       jan feb mar apr may jun jul aug sep oct nov
+        / nlag=7 method=ml backstep archtest garch=(q=7);
+    output out=pred p=fcst pm=ytrend
+        lcl=lcl ucl=ucl;
+run;*/
+
+/*proc sort data=user.pred;
+    by fcstorig fcstdest fcstdt;
+run;
+    * historical actual and predicted values ;
+
+data _null_;
+temp = &today - &fcstoffset ;
+put "date diff = " temp date9.;
+run;*/
+
+************************************************
+End Experiments ********************************
+************************************************;
+
+data hublib.majorfcstact;
+    set user.pred;
+    if fcstdt < &today - &fcstoffset ;
+        keep fcstorig fcstdest fcstdt fcst count;
+run;
+
+*proc contents data=pred_arima;
+*run;
+
+data pred_arima_final;
+set pred_arima;
+if fcstdt > &today;
+keep forecast fcstdt;
+run;
+
+data done;
+set hublib.majorfcstact;
+set pred_arima_final;
+run;
+
+*proc contents data=user.done;
+*run;
+*/
+
+************************************************
+Major Mkt Fcast Diagnostics ********************
+************************************************;
+
+data majfcsteval;
+    set hublib.majorfcstact;
+    fcsterr = fcst - count;
+    mae = abs(fcsterr);
+    if count ~= 0 then mape = mae/count; else mape = .;
+run;
+
+proc means data=majfcsteval noprint;
+    by fcstorig fcstdest;
+    var mae mape count fcst fcsterr;
+    output out=majfcstsum mean=;
+run;
+
+proc means data=majfcstsum noprint;
+    by fcstorig ;
+    var fcst ;
+    output out=majoriginfcstacttot sum=;
+run;
+
+data majfcstsum;
+    set majfcstsum;
+    actual = count;
+    drop _type_ _freq_ count;
+run;
+
+data HUBLIB.majordemandfcst;
+    set user.pred ;
+    if fcst ~= . ;
+    if fcstdt >= &today - &fcstoffset and
+        fcstdt <= &today- &fcstoffset + &fcsthoriz;
+    keep fcstorig fcstdest fcstdt fcst ;
+run;
+
+    * forecast diagnostics - major OD's ;
+
+proc sort DATA=HUBLIB.majordemandfcst ;
+    by fcstorig fcstdt;
+run;
+
+proc means data=HUBLIB.majordemandfcst noprint;
+    by fcstorig fcstdt;
+    var FCST;
+    output out=MAJORFCST sum =;
+run;
+
+proc means data=MAJORFCST noprint;
+    by fcstorig ;
+    var FCST;
+    output out=MAJORFCSTorigavg mean=;
+run;
+
+data hublib.majorrampsummary;
+    set MAJORFCST ;
+    by fcstorig fcstdt;
+    keep fcstorig fcstdt fcst ;
+run;
+
+data hublib.r_dataset;
+    set user.majorfcstsummary2;
+run;
+
+*******************************************************************************;
+** minor origins **************************************************************;
+*******************************************************************************;
+
+* Other demand forecast ;
+* Minor origins total demand forecast -- all zzother dests ;
+* forecast smaller origins that have no major destinations ;
+* inorg flag is set if no OD's in fcstod include this origin ;
+* same general process as the major OD's ;
+* single D per origin ;
+
+proc sort DATA=hublib.minororig ;
+    by fcstorig fcstdt;
+run;
+
+proc means data = hublib.minororig  noprint;
+    by fcstorig fcstdt;
+    output out=user.otherorigsum;
+    var loads;
+run;
+
+    * this captures the number of days with loads ;
+data user.otherfcstsummary2;
+    set user.otherorigsum;
+    by fcstorig fcstdt;
+    if _stat_ = "N";
+    drop _freq_ _type_;
+run;
+
+    * count dates with loads ;
+proc means data = user.otherfcstsummary2 noprint;
+    title "look at loads/day or total loads instead of n";
+    by fcstorig ;
+    output out=user.otherfcstsummary3;
+    var loads;
+run;
+
+data user.otherfcstsummary4;
+    set user.otherfcstsummary3;
+    by fcstorig ;
+    if _stat_ = "N";
+    loaddays = loads;
+    drop _freq_ _type_ loads;
+run;
+
+proc sort data = user.otherfcstsummary4;
+    by fcstorig ;
+run;
+
+    * Fill in missing dates -- no obs implies zero loads for that date ;
+    * Also, make sure we have an entry for starthistory and end history, ;
+    *  so that when we fill in missing data, we fill in zeroes at beginning and end;
+data user.otherforecast;
+    merge hublib.minororig user.otherfcstsummary4 ;
+    by fcstorig ;
+    if loaddays < 50 then forecast = "N"; else forecast = "Y";
+run;
+
+proc univariate data=user.otherforecast noprint;
+    by fcstorig fcstdt;
+    var LOADS;
+    output out=user.otherforecast2pt5 n=count;
+run;
+
+data user.othersumbracket;
+    set user.otherforecast2pt5;
+    by fcstorig fcstdt;
+    if first.fcstorig then
+    do
+        count = 0; fcstdt= &today - &histrange ; output;
+    end;
+
+    if last.fcstorig then
+    do
+        count = 0; fcstdt= &today - &fcstoffset -1; output;
+    end;
+run;
+
+data user.othersumfull;
+    merge user.othersumbracket user.otherforecast2pt5 ;
+    by fcstorig fcstdt;
+run;
+
+proc sort data=user.othersumfull;
+    by FCSTORIG fcstdt;
+run;
+
+proc expand data=user.othersumfull out=sumzero to=day method=none;
+    by fcstorig ;
+    id fcstdt;
+run;
+
+proc expand data=sumzero out= user.otherfcstsummary method=none;
+    by fcstorig ;
+    id fcstdt;
+    convert count / transformout=(setmiss 0);
+run;
+
+data user.otherfcstsummary ;
+    set user.otherfcstsummary ;
+    label count ="loads";
+run;
+
+proc sort data = user.otherfcstsummary ;
+    by fcstorig;
+run;
+
+proc means data = user.otherfcstsummary sum n noprint; title "means of count after expand";
+    by fcstorig;
+    output out=sumloadcnt;
+    var count;
+run;
+
+proc sort data=user.otherfcstsummary;
+    by fcstdt;
+run;
+
+*proc sort data=hublib.holidays;
+*by fcstdt;
+*run;
+
+data user.otherfcstsummaryx;
+    merge user.otherfcstsummary hublib.holidays;
+    by fcstdt;
+    if fcstdt >= &today - &histrange and fcstdt <= &today - &fcstoffset - 1 ;
+    if holiday ~= . then count = .;
+    if fcstorig ~="" ;
+run;
+
+data user.otherfcstsummaryx;
+	set user.otherfcstsummary;
+run;
+
+proc sort data=user.otherfcstsummaryX;
+    by fcstORIG;
+run;
+
+data user.otherfcstsummaryx;
+    set user.otherfcstsummaryx ;
+    by fcstorig ;
+    if first.fcstorig then
+    do   fcstdt = &today- &fcstoffset  to &today - &fcstoffset + &fcsthoriz ; holiday = .; desc=""; count=.; output; end;
+    else output;
+run;
+
+proc sort DATA=user.otherfcstsummaryx ;
+    by fcstorig fcstdt;
+run;
+
+data user.othersum;
+    set user.otherfcstsummaryx;
+    by fcstorig ;
+    dow = weekday(fcstdt);
+    mon = month(fcstdt);
+
+    if first.fcstorig then
+        time = 1; else time+1;
+    if dow eq 2 then monday=1; else monday=0;
+    if dow eq 3 then tuesday=1; else tuesday=0;
+    if dow eq 4 then wednesday=1; else wednesday=0;
+    if dow eq 5 then thursday=1; else thursday=0;
+    if dow eq 6 then friday=1; else friday=0;
+    if dow eq 7 then saturday=1; else saturday=0;
+
+    yesterday = lag(count);
+
+    if mon eq 1 then jan=1; else jan=0;
+    if mon eq 2 then feb=1; else feb=0;
+    if mon eq 3 then mar=1; else mar=0;
+    if mon eq 4 then apr=1; else apr=0;
+    if mon eq 5 then may=1; else may=0;
+    if mon eq 6 then jun=1; else jun=0;
+    if mon eq 7 then jul=1; else jul=0;
+    if mon eq 8 then aug=1; else aug=0;
+    if mon eq 9 then sep=1; else sep=0;
+    if mon eq 10 then oct=1; else oct=0;
+    if mon eq 11 then nov=1; else nov=0;
+
+    if fcstorig ne "" ;
+run;
+
+proc sort DATA=user.othersum;
+    by fcstorig  fcstdt;
+run;
+
+data othersum;
+    set othersum;
+    if fcstdt > intnx('MONTH',date(),-2) then volcontrib=0;
+    else volcontrib=1;
+run;
+
+proc freq data=othersum;
+    table volcontrib;
+run;
+
+**************************************************
+gen holiday week dummy ***************************
+**************************************************;
+proc sql;
+drop table mfs1;
+create table mfs1 as
+select *
+, year(fcstdt)*100 + week(fcstdt) as woy
+, 0 as holidayweek
+from othersum;
+
+create table mfs2 as
+select distinct woy
+, 1 as holidayweek
+from mfs1
+where holiday is not null;
+
+update mfs1
+set holidayweek = (select holidayweek from mfs2 where mfs1.woy = mfs2.woy)
+where exists (select * from mfs2 where mfs1.woy = mfs2.woy);
+
+drop table mfs2;
+
+drop table othersum;
+
+create table othersum as
+select *
+from mfs1;
+
+**************************************************;
+
+create table mfsa as
+select *
+from mfs1
+where holidayweek = 1;
+
+update mfsa
+set count = (
+	select count
+	from othersum a
+	where a.fcstdt = mfsa.fcstdt - 7
+	and a.fcstorig = mfsa.fcstorig)
+where holidayweek = 1;
+
+drop table othersum;
+
+create table othersum as
+select *
+from mfsa;
+
+drop table mfs1;
+drop table mfsa;
+quit;
+
+**************************************************
+holiday week dummy generated *********************
+**************************************************;
+
+
+* All ready for forecast method....
+  Autoreg: 7 lags, dow and moy dummies, and time trend;
+title 'minor markets';
+
+proc autoreg data=user.othersum outest=est ;
+    by fcstorig ;
+    model count = time volcontrib holidayweek
+        monday tuesday wednesday thursday friday saturday
+        jan feb mar apr may jun jul aug sep oct nov
+        / nlag=7 method=ml backstep archtest ; *garch=(q=7);
+    output out=pred p=fcst pm=ytrend
+               lcl=lcl ucl=ucl;
+run;
+
+proc sort data=user.pred;
+    by fcstorig  fcstdt;
+run;
+
+data hublib.otherfcstact;
+    set user.pred;
+    if fcstdt <&today - &fcstoffset ;
+        keep fcstorig fcstdt fcst count ;
+run;
+    * forecast diagnostics ;
+data minfcsteval;
+    set hublib.otherfcstact;
+    fcsterr = fcst - count;
+    mae = abs(fcsterr);
+    if count ~= 0 then mape = mae/count; else mape = .;
+run;
+
+proc means data=minfcsteval noprint;
+    by fcstorig ;
+    var mae mape count fcst fcsterr;
+    output out=minfcstactsum mean=;
+run;
+
+data minfcstactsum;
+    set minfcstactsum;
+    actual = count;
+    drop _type_ _freq_ count;
+run;
+
+data fcstacttots;
+    set majoriginfcstacttot minfcstactsum;
+    rename fcst=histpredict;
+run;
+
+proc sort data=fcstacttots;
+    by fcstorig;
+run;
+
+proc print;
+run;
+
+proc means data=fcstacttots sum;
+    var histpredict;
+run;
+
+data HUBLIB.otherdemandfcst;
+    set user.pred ;
+    by fcstorig  fcstdt;
+    if fcst ~= . ;
+    if fcstorig ~= "";
+    if fcstdt >= &today- &fcstoffset  and fcstdt <= &today- &fcstoffset  + &fcsthoriz;
+    keep fcstorig fcstdt fcst ;
+run;
+
+proc means data=HUBLIB.otherdemandfcst noprint;
+    by fcstorig ;
+    var fcst ;
+    output out=MINORFCSTorigavg   mean=;
+run;
+
+data FCSTorigavg;
+    set MINORFCSTorigavg MAJORFCSTorigavg;
+run;
+
+proc sort data=FCSTorigavg;
+    by fcstorig;
+run;
+
+data fcstandhist;
+    merge FCSTorigavg fcstacttots;
+    by fcstorig;
+    keep fcstorig fcst histpredict;
+run;
+
+proc print;
+run;
+
+proc means data=fcstandhist sum;
+    var histpredict fcst;
+run;
+
+
+
+
+
+
+
+
+
+
+/*proc sql;*/
+/**drop table mfs1;*/
+/*create table mfs1 as*/
+/*select **/
+/*, year(fcstdt)*100 + week(fcstdt) as woy*/
+/*, 0 as holidayweek*/
+/*from majorfcstsummary;*/
+/**/
+/*create table mfs2 as*/
+/*select distinct woy*/
+/*, 1 as holidayweek*/
+/*from mfs1*/
+/*where holiday is not null;*/
+/**/
+/*update mfs1*/
+/*set holidayweek = (select holidayweek from mfs2 where mfs1.woy = mfs2.woy)*/
+/*where exists (select * from mfs2 where mfs1.woy = mfs2.woy);*/
+/**/
+/**drop table mfs2;*/
+/**/
+/**drop table majorfcstsummary;*/
+/**/
+/*create table majorfcstsummary as*/
+/*select **/
+/*from mfs1;*/
+/**/
+/***************************************************;*/
+/**/
+/*create table mfsa as*/
+/*select **/
+/*from mfs1*/
+/*where holidayweek = 1;*/
+/**/
+/**update mfsa*/
+/*set count = (*/
+/*	select count*/
+/*	from majorfcstsummary a*/
+/*	where a.fcstdt = mfsa.fcstdt - 7*/
+/*	and a.fcstorig = mfsa.fcstorig*/
+/*	and a.fcstdest = mfsa.fcstdest)*/
+/*where holidayweek = 1;*/
+/**/
+/*quit;*/
+/**/
+/**the above was replaced by the below, for performance reasons;*/
+/**/
+/**proc sort data=mfsa;by fcstorig fcstdest holidayweek fcstdt;*/
+/**proc sort data=majorfcstsummary;by fcstorig fcstdest holidayweek fcstdt;*/
+/**data mfsa;update mfsa majorfcstsummary;*/
+/**by fcstorig fcstdest holidayweek fcstdt;*/
+/**where holidayweek = 1;*/
+/**run;*/
+/**/
+/*proc sql;*/
+/**/
+/*drop table majorfcstsummary;*/
+/**/
+/*create table majorfcstsummary as*/
+/*select **/
+/*from mfsa;*/
+/**/
+/*drop table mfs1;*/
+/*drop table mfsa;*/
+/*quit;*/

@@ -1,0 +1,70 @@
+Sub PivotTableClassic()
+    Dim pt As PivotTable
+
+    For Each pt In ActiveSheet.PivotTables
+        pt.InGridDropZones = True
+        pt.RowAxisLayout xlTabularRow
+        pt.ShowDrillIndicators = False
+        pt.VisualTotals = False
+        
+        For Each pf In pt.PivotFields
+            On Error Resume Next
+            pf.Subtotals(1) = False
+        Next pf
+    Next pt
+End Sub
+
+Sub MakePT()
+
+    Dim sh As Worksheet
+    Dim pc As PivotCache
+    Dim pt As PivotTable
+    Dim rUsed As Range
+    Dim sUsed As Worksheet
+    
+    'Dim random As Integer
+    'Dim cs As String
+    'csName = Application.Caller.Worksheet.Name
+    'csName = ActiveSheet.Name
+    'random = ((905) * Rnd + 1)
+    'Debug.Print random
+
+    'Make a dynamic range name and return a reference to it
+    'Set rUsed = MakeNamedRange(Sheet1, 1, 1, 3, "rngSourceData")
+    'Set sUsed = ActiveSheet
+    Set rUsed = Selection
+    rUsed.Activate
+    'ActiveWorkbook.Names.Add Name:="range1" & random, RefersTo:=rUsed
+    'Debug.Print rUsed.Address(False, False)
+
+        'Add a new sheet for the pivot table
+    
+
+    'Create a blank pivot table on the new sheet
+    'Set pc = ThisWorkbook.PivotCaches.Add(xlDatabase, rUsed)
+    
+    'sUsed.Select
+    'rUsed.Select
+    
+    'Set sh = Worksheets.Add
+    On Error Resume Next
+    Set pt = ActiveSheet.PivotTableWizard(xlDatabase, rUsed)
+
+    'Set pc = ThisWorkbook.PivotCaches.Add(xlDatabase, "range1")
+    'Set pt = pc.CreatePivotTable(sh.Cells(3, 1), "Pivot1")
+    'sh.Range("A3"), "Pivot1")
+       
+    
+    'update pivot features
+    'pt.InGridDropZones = True
+    'pt.RowAxisLayout xlTabularRow
+    On Error Resume Next
+    pt.ShowDrillIndicators = False
+    'pt.VisualTotals = False
+    On Error Resume Next
+    For Each pf In pt.PivotFields
+        On Error Resume Next
+        pf.Subtotals(1) = False
+    Next pf
+
+End Sub

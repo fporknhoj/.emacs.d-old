@@ -1,0 +1,57 @@
+\*options pagesize=80 linesize=80 pageno=1; *nodate ;
+
+/* data _null_; */
+/* startdate = date(); */
+/* today = date(); */
+/* *call symput('startdate',"'"||trim(left(put(startdate, date9.)))||"'"); */
+/* call symput('today',"'"||trim(left(put(today, date9.)))||"'"); */
+/* call symput('startdate',input(strip(startdate),date9.); */
+/* run; */
+
+x 'cd c:\users\john.kropf\sas graphs';
+options nodate pageno=1 linesize=80 pagesize=60 source compress=yes replace=yes;
+
+libname dwpa odbc dsn='dw_pa' schema=dbo;
+libname hublib 'c:\sasmodel\datasets';
+libname out 'c:\sasmodel\output\';
+libname user 'c:\sasmodel\userlib\';
+
+*proc printto print='c:\sasmodel\output\sample' new;
+*proc printto print='c:\fire' new;
+run;
+
+/* **************************** */
+/* define today macro variables */
+/* **************************** */
+*%let startdate= %sysevalf('29MAY2015'd);
+*%let today = %sysevalf('29MAY2015'd);
+%let startdate   = %sysfunc(date());
+%let today       = %sysfunc(date());
+%put &startdate;
+%put &today;
+
+/* **************************** */
+/* define other macro variables */
+/* **************************** */
+%let cursupdays  = 2;    * number of days rail controlled (non-fleet) boxes stay in Hub's control after CU;
+%let fltsupdays  = 120;  * number of days fleet boxes are considered supply - longer must be bad data;
+%let turnsupdays = 120;  * if last event implies street turning, wait 120 days mzx before throwing out data;
+%let transupdays = 120;  * if last event implies in rail transit, wait 120 days mzx before throwing out data;
+%let fcsthoriz   = 13;   * today plus 13 more days = 14 day forecast;
+%let fcstoffset  = 0;    * if you want the forcst to start yesterday, offset=1, etc.;
+%let histrange   = 525;  * days of history for creating forecast;
+
+/* **************************** */
+/* **************************** */
+/* **************************** */
+/* **************************** */
+/* **************************** */
+
+%include 'c:\sasmodel\v3\1_queries.sas';
+%include 'c:\sasmodel\v3\2_build datasets.sas';
+%include 'c:\sasmodel\v3\3_pickups.sas';
+%include 'c:\sasmodel\v3\4_deliveries.sas';
+%include 'c:\sasmodel\v3\5_final processing.sas';
+%include 'c:\sasmodel\v3\6_build_combined_table';
+
+

@@ -1,0 +1,48 @@
+----select * into #at1 from dw_pa.dbo.supply_trial_1 
+--begin try drop table dw_pa.dbo.supply_trial_1 end try begin catch end catch
+--select case when a.mkt in ('atlal','atlar') then 'ATLA'
+--    when a.mkt in ('dall','dalr') then 'DALAS'
+--    when a.mkt in ('chmet','chil','chmi','choh','chin','chcan','chwi') then 'CHGO'
+--    else a.mkt end as market
+--    ,a.mkt as submarket
+--    ,a.dow as weekday
+--    ,a.volend as deliveries
+--into dw_pa.dbo.supply_trial_1
+--from #at1 a
+--order by submarket
+--    ,weekday
+
+
+--select * from dw_pa.dbo.supply_trial_1 
+
+
+--select TABLE_NAME, column_name from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME like 'big_box%updated'
+
+
+begin try drop table #a end try begin catch end catch
+
+select
+		a.OriginRampSubMarket as SubMarket
+,		a.ForecastDate as Dt
+,		sum(a.volume) as Pickups
+,		min(b.deliveries) as Deliveries
+into	#a
+from 
+		dw_pa.dbo.big_box_demand_forecast_updated a
+right 
+join	dw_pa.dbo.supply_trial_1 b
+on		a.OriginRampSubMarket = b.submarket
+and		DATEPART(weekday,a.ForecastDate) = b.weekday
+--where	a.ForecastDate between '21jun15' and '28jun15'
+where	a.OriginRampSubMarket is not null
+group 
+by		a.OriginRampSubMarket
+,		ForecastDate
+--order
+--by		a.OriginRampSubMarket
+--,		a.ForecastDate
+
+select	* 
+from	#a
+
+--select * from dw_pa.dbo.supply_trial_1

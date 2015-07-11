@@ -1,0 +1,178 @@
+require(data.table)
+require(plyr)
+require(RODBC)
+require(sqldf)
+require(XLConnect)
+
+## db connections 
+dw2 <- odbcDriverConnect('driver={SQL Server};server=HUBDWDB01;database=DW2;trusted_connection=true')
+
+## query defs
+q.orderlist <- "select
+    a.ordernumber as id
+	,origincity as oct
+	,originstate as ost
+	,destinationcity as dct
+	,destinationstate as dst
+	,originzonenumber as oldozone
+	,DestinationZoneNumber as olddzone
+    ,'z'+left(originzipcode,3) as oz3
+    ,'z'+left(destinationzipcode,3) as dz3
+    ,1 as vol
+	,max(lhlmiles) as lhlmi
+	,max(odrmiles) as odrmi
+	,max(ddrmiles) as ddrmi
+	,MAX(lhlmiles) + MAX(odrmiles) + MAX(ddrmiles) as totmi
+from
+    dw2.dbo.analyticaldetail a
+    join (
+		select 
+			ordernumber
+			,max(segmentmileage) as odrmiles
+		from 
+			dw2.dbo.analyticaldetail
+		where
+		    year(dsrdate) = 2015
+			and EquipmentLength=53 
+			and EquipmentType='CN' 
+			and TransportationMode='IML' 
+			and origincountrycode='usa' 
+			and destinationcountrycode='usa'  
+			and sellinghub not in ('02','34','35','52','53','54','55') 
+			and multistopcode in ('n','') 
+			and HazardousMaterialFlag <> 'y'
+			and orderstatus not in ('cwc','cnl','dlt') 
+			and servicetype in ('dd')
+			and EquipmentCategory in ('domestic','trailers')
+			and segmenttype = 'odr'
+		group by 
+			OrderNumber
+		) odr
+	on odr.ordernumber = a.ordernumber
+    join (
+		select 
+			ordernumber
+			,max(segmentmileage) as ddrmiles
+		from 
+			dw2.dbo.analyticaldetail
+		where
+		    year(dsrdate) = 2015
+			and EquipmentLength=53 
+			and EquipmentType='CN' 
+			and TransportationMode='IML' 
+			and origincountrycode='usa' 
+			and destinationcountrycode='usa'  
+			and sellinghub not in ('02','34','35','52','53','54','55') 
+			and multistopcode in ('n','') 
+			and HazardousMaterialFlag <> 'y'
+			and orderstatus not in ('cwc','cnl','dlt') 
+			and servicetype in ('dd')
+			and EquipmentCategory in ('domestic','trailers')
+			and segmenttype = 'ddr'
+		group by 
+			OrderNumber	
+		) ddr
+	on ddr.ordernumber = a.ordernumber
+	join (
+		select 
+			ordernumber
+			,max(segmentmileage) as lhlmiles
+		from 
+			dw2.dbo.analyticaldetail
+		where
+		    year(dsrdate) = 2015
+			and EquipmentLength=53 
+			and EquipmentType='CN' 
+			and TransportationMode='IML' 
+			and origincountrycode='usa' 
+			and destinationcountrycode='usa'  
+			and sellinghub not in ('02','34','35','52','53','54','55') 
+			and multistopcode in ('n','') 
+			and HazardousMaterialFlag <> 'y'
+			and orderstatus not in ('cwc','cnl','dlt') 
+			and servicetype in ('dd')
+			and EquipmentCategory in ('domestic','trailers')
+			and segmenttype = 'lhl'
+		group by 
+			OrderNumber	
+		) lhl
+	on lhl.ordernumber = a.ordernumber
+where
+    year(dsrdate) = 2015
+    and EquipmentLength=53 
+    and EquipmentType='CN' 
+    and TransportationMode='IML' 
+    and origincountrycode='usa' 
+    and destinationcountrycode='usa'  
+    and sellinghub not in ('02','34','35','52','53','54','55') 
+    and multistopcode in ('n','') 
+    and HazardousMaterialFlag <> 'y'
+    and orderstatus not in ('cwc','cnl','dlt') 
+    and servicetype in ('dd')
+    and EquipmentCategory in ('domestic','trailers')
+group by 
+    a.ordernumber
+	,origincity
+	,originstate
+	,destinationcity
+	,destinationstate
+	,originzonenumber
+	,DestinationZoneNumber
+    ,left(originzipcode,3)
+    ,left(destinationzipcode,3)"
+
+q.newzone <- "select 'z'+convert(varchar(4),zip3) as zip3 ,[new zone] as newzone
+from dw_pa.dbo.newzonesdef"
+
+## issue queries / grab data
+orderlist <- data.table(sqlQuery(dw2 ,q.orderlist ,stringsAsFactors=F))
+orderlist[,ozip3:=substr(oz3,2,4)][,dzip3:=substr(dz3,2,4)][,oz3:=NULL][,dz3:=NULL][,oz3:=ozip3][,dz3:=dzip3][,ozip3:=NULL][,dzip3:=NULL]
+
+str(orderlist)
+
+newzone   <- data.table(sqlQuery(dw2 ,q.newzone ,stringsAsFactors=F))
+newzone   <- newzone[,z3:=substr(zip3,2,4)][,list(z3,newzone)]
+
+ordrs <- orderlist[order(totmi)]
+print( paste("percent with 0 LHL miles" ,sprintf("%1.2f%%" , ( 100 * (nrow(ordrs[lhlmi==0] )) / nrow(ordrs) ))))
+ordrs <- ordrs[lhlmi>0]
+
+## create the following columns:
+##  newzone 
+## ,avg ob vol 
+## ,avg ib vol 
+## ,avg bal 
+## ,avg ob empty mi rat 
+## ,avg ib empty mi rat 
+## ,avg ib dray mi 
+## ,avg ob dray mi
+
+## apply new zones
+setnames(newzone ,"z3" ,"oz3")
+setnames(newzone ,"newzone","newoz")
+setkey(newzone,oz3)
+setkey(ordrs,oz3)
+
+aa <- merge(x=ordrs ,y=newzone ,by="oz3")
+
+setnames(newzone, "oz3","dz3")
+setnames(newzone, "newoz","newdz")
+setkey(newzone,dz3)
+setkey(aa,dz3)
+
+aa <- merge(x=aa , y=newzone , by="dz3")
+
+## create measurements:
+
+ob.info <- aa[,list(obvol=sum(vol)/(6),obmi=mean(totmi),obdraymi=mean(odrmi)),by=newoz]
+ib.info <- aa[,list(ibvol=sum(vol)/(6),ibmi=mean(totmi),ibdraymi=mean(odrmi)),by=newdz]
+
+setnames(ob.info,"newoz","newz")
+setnames(ib.info,"newdz","newz")
+setkey(ob.info,"newz")
+setkey(ib.info,"newz")
+
+ab <- merge(ob.info , ib.info , by='newz')
+
+writeWorksheetToFile
+

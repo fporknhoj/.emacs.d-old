@@ -1,0 +1,103 @@
+library("RODBC")#, lib.loc="C:/Program Files/R/R-3.1.0/library")
+#library("reshape2", lib.loc="C:/Program Files/R/R-3.1.0/library")
+#library("dplyr", lib.loc="C:/Program Files/R/R-3.1.0/library")
+#library("plyr", lib.loc="C:/Program Files/R/R-3.1.0/library")
+#library("ggplot2", lib.loc="C:/Program Files/R/R-3.1.0/library")
+#library("RJDBC", lib.loc="C:/Program Files/R/R-3.1.0/library")
+#library("data.table", lib.loc="C:/Program Files/R/R-3.1.0/library")
+
+# Set up direct db connections
+db.hub <- odbcDriverConnect('driver={SQL Server};server=HUBDWDB01;database=DW2;trusted_connection=true')
+
+date.start.dw <- "2014-06-01"
+
+# Complete Queries
+## ddta    <- sqlQuery(db.hub, "SELECT             OrderNumber,             (OriginZoneNumber*1000+DestinationZoneNumber) as ZoneKey,             SegmentType,             SUM(Cost_Blended) AS DirDrayCost                          FROM AnalyticalDetail                          WHERE                  (DSRDate > CONVERT(DATETIME, '2014-04-01 00:00:00', 102))              AND (SegmentType = 'ODR' or SegmentType = 'DDR')              AND (ChargeCategory  = 'Fuel' or ChargeCategory = 'Line Haul')             /* AND (ChargeCategory !='Other')              AND (ChargeCategory !='Non-Equipment Accessorial') */                          AND ((SellingHub) Not In ('02', '34', '35', '52', '53', '54', '55'))              AND ((HazardousMaterialFlag) !='Y')              AND ((MultiStopCode) Not In ('O', 'D', 'B'))              AND ((ChargeCode) Not In ('ADM', 'PRF', 'FPF'))              AND ((OrderStatus) Not In ('CWC', 'CNL', 'DLT'))              AND ((EquipmentCategory) In ('domestic', 'trailers'))              AND ((TransportationMode)='IML')             AND ((SegmentStatus)='RLS')              AND ((ServiceType)='dd')             AND (OriginZoneNumber*1000+DestinationZoneNumber > 1000)                          Group by                           SegmentType,             OriginZoneNumber,             DestinationZoneNumber,             OrderNumber                          order by                           OriginZoneNumber*1000+DestinationZoneNumber,             SegmentType" )
+ddta    <- sqlQuery(db.hub, paste("SELECT OrderNumber, (OriginZoneNumber*1000+DestinationZoneNumber) as ZoneKey, SegmentType, SUM(Cost_Blended) AS DirDrayCost FROM AnalyticalDetail WHERE (DSRDate > CONVERT(DATETIME,'", date.start.dw, " 00:00:00', 102)) AND (SegmentType = 'ODR' or SegmentType = 'DDR') AND (ChargeCategory = 'Fuel' or ChargeCategory = 'Line Haul') /* AND (ChargeCategory !='Other') AND (ChargeCategory !='Non-Equipment Accessorial') */ AND ((SellingHub) Not In ('02', '34', '35', '52', '53', '54','55')) AND ((HazardousMaterialFlag) !='Y') AND ((MultiStopCode) Not In ('O', 'D', 'B')) AND ((ChargeCode) Not In ('ADM', 'PRF', 'FPF')) AND ((OrderStatus) Not In ('CWC', 'CNL', 'DLT')) AND ((EquipmentCategory) In ('domestic', 'trailers')) AND ((TransportationMode)='IML') AND ((SegmentStatus)='RLS') AND ((ServiceType)='dd') AND (OriginZoneNumber*1000+DestinationZoneNumber > 1000) Group by SegmentType, OriginZoneNumber, DestinationZoneNumber, OrderNumber order by OriginZoneNumber*1000+DestinationZoneNumber, SegmentType"))
+# Operational Summary Query to distance, hub price per mile, fuel surcharge, and Volume
+## ddta2   <- sqlQuery(db.hub, " SELECT      (dbo.OperationalSummary.OriginZoneNumber*1000 + dbo.OperationalSummary.DestinationZoneNumber) As ZoneKey, Avg (dbo.OperationalSummary.Mileage) As Dist, Avg((dbo.OperationalSummary.RevenueLineHaulTotal+dbo.OperationalSummary.RevenueFuelTotal)/(dbo.vwDimDateDOE.IMLFuelDefault/100+1)) / Avg(dbo.OperationalSummary.Mileage) AS HubPricePerMile, Avg(dbo.vwDimDateDOE.IMLFuelDefault/100+1) as FSC, Sum(dbo.OperationalSummary.Volume) as Volume  FROM  dbo.OperationalSummary  INNER JOIN  dbo.vwDimDateDOE ON dbo.OperationalSummary.DSRDate = dbo.vwDimDateDOE.StandardDate  WHERE      ((dbo.OperationalSummary.DSRDate)>CONVERT(DATETIME, '2014-04-01 00:00:00', 102) )  AND ((dbo.OperationalSummary.CommodityCode) != 4221130)                 AND ((dbo.OperationalSummary.EquipmentLength)=53)                 AND ((dbo.OperationalSummary.EquipmentType)='CN')                 AND ((dbo.OperationalSummary.TransportationMode)='IML')                 AND ((dbo.OperationalSummary.HazardousMaterialFlag)='N' Or (dbo.OperationalSummary.HazardousMaterialFlag) Is Null)                 AND ((dbo.OperationalSummary.OrderStatus)='DLV')                 AND ((dbo.OperationalSummary.MultiStopCode)='N' Or (dbo.OperationalSummary.MultiStopCode) Is Null)                 AND ((dbo.OperationalSummary.ServiceType)='DD')                 AND ((dbo.OperationalSummary.ReportingCustomerNumber)>99)                 AND ((dbo.OperationalSummary.RevenueLineHaulTotal)>0)                 AND ((dbo.OperationalSummary.RevenueFuelTotal)>0)                 AND ((dbo.vwDimDateDOE.IMLFuelDefault)>0)                 AND ((dbo.OperationalSummary.OriginZoneNumber)>0)                 AND ((dbo.OperationalSummary.DestinationZoneNumber)>0)                 AND ((dbo.OperationalSummary.OriginZoneNumber)>0)                 AND ((dbo.OperationalSummary.DestinationZoneNumber)>0                AND ((dbo.OperationalSummary.Volume)>0)                 AND ((dbo.OperationalSummary.RevenueLineHaulTotal)>1)                 AND ((dbo.OperationalSummary.Mileage)>0)                 AND ((dbo.OperationalSummary.RevenueTotal)>1))  GROUP BY dbo.OperationalSummary.OriginZoneNumber*1000+dbo.OperationalSummary.DestinationZoneNumber") 
+ddta2   <- sqlQuery(db.hub, paste("SELECT (dbo.OperationalSummary.OriginZoneNumber*1000 + dbo.OperationalSummary.DestinationZoneNumber) As ZoneKey, Avg (dbo.OperationalSummary.Mileage) As Dist, Avg((dbo.OperationalSummary.RevenueLineHaulTotal+dbo.OperationalSummary.RevenueFuelTotal)/(dbo.vwDimDateDOE.IMLFuelDefault/100+1)) / Avg(dbo.OperationalSummary.Mileage) AS HubPricePerMile, Avg(dbo.vwDimDateDOE.IMLFuelDefault/100+1) as FSC, Sum(dbo.OperationalSummary.Volume) as Volume FROM dbo.OperationalSummary INNER JOIN dbo.vwDimDateDOE ON dbo.OperationalSummary.DSRDate = dbo.vwDimDateDOE.StandardDate WHERE ((dbo.OperationalSummary.DSRDate)>CONVERT(DATETIME,'", date.start.dw ,"00:00:00', 102) ) AND ((dbo.OperationalSummary.CommodityCode) != 4221130) AND ((dbo.OperationalSummary.EquipmentLength)=53) AND ((dbo.OperationalSummary.EquipmentType)='CN') AND ((dbo.OperationalSummary.TransportationMode)='IML') AND ((dbo.OperationalSummary.HazardousMaterialFlag)='N' Or (dbo.OperationalSummary.HazardousMaterialFlag) Is Null) AND ((dbo.OperationalSummary.OrderStatus)='DLV') AND ((dbo.OperationalSummary.MultiStopCode)='N' Or (dbo.OperationalSummary.MultiStopCode) Is Null) AND ((dbo.OperationalSummary.ServiceType)='DD') AND ((dbo.OperationalSummary.ReportingCustomerNumber)>99) AND ((dbo.OperationalSummary.RevenueLineHaulTotal)>0) AND ((dbo.OperationalSummary.RevenueFuelTotal)>0) AND ((dbo.vwDimDateDOE.IMLFuelDefault)>0) AND ((dbo.OperationalSummary.OriginZoneNumber)>0) AND ((dbo.OperationalSummary.DestinationZoneNumber)>0) AND ((dbo.OperationalSummary.OriginZoneNumber)>0) AND ((dbo.OperationalSummary.DestinationZoneNumber)>0 AND ((dbo.OperationalSummary.Volume)>0) AND ((dbo.OperationalSummary.RevenueLineHaulTotal)>1) AND ((dbo.OperationalSummary.Mileage)>0) AND ((dbo.OperationalSummary.RevenueTotal)>1)) GROUP BY dbo.OperationalSummary.OriginZoneNumber*1000+dbo.OperationalSummary.DestinationZoneNumber"))
+# Ramo Data
+#ramps   <- read.csv("c:/users/john.kropf/documents/Projects/Lane by Lane Price Visualization/DVR/RampPair/ramps.csv")
+ramps   <- read.csv("ramps.csv")
+names(ramps)[1] <- "ZoneKey"
+# Seperate orgin and destination drays
+odr <- ddta[ddta$SegmentType == "ODR",]
+ddr <- ddta[ddta$SegmentType == "DDR",]
+
+# Roll up on Zone Key
+odrag <- aggregate(odr$DirDrayCost ~ odr$ZoneKey, data=odr, FUN=mean)
+names(odrag)[1] <- 'ZoneKey'
+names(odrag)[2] <- 'ODR'
+ddrag <- aggregate(ddr$DirDrayCost ~ ddr$ZoneKey, data=ddr, FUN=mean)
+names(ddrag)[1] <- 'ZoneKey'
+names(ddrag)[2] <- 'DDR'
+
+# Merge odr and ddr by zone key
+a1 <- merge(odrag, ddrag, by='ZoneKey')
+# Merge odr and ddr with hub price data by zone key
+a1 <- merge(a1, ddta2, by='ZoneKey')
+head(a1)
+# Make Fuel Adjustment
+a1$ODR <- a1$ODR / a1$FSC
+a1$DDR <- a1$DDR / a1$FSC
+
+# Convert to $/mil
+a1$ODR <- a1$ODR / a1$Dist
+names(a1)[2] <- 'odr.by.mile.fuel.adj'
+# Convert to $/mil
+a1$DDR <- a1$DDR / a1$Dist
+names(a1)[3] <-  'ddr.by.mile.fuel.adj'
+
+# Sum Orig and Dest Dray Cost
+#a1$HDC <- a1$ODR + a1$DDR
+
+#Subtract Total Dray Cost from Hub Price Per Mile
+#a1$HC <- a1$HubPricePerMile - a1$HDC
+head(ramps) 
+# Merge Zone Keys and Ramps
+a2 <- merge(ramps, a1, by='ZoneKey')
+# Create DF with required parts
+a3 <- data.frame(a2$ramp.pair, a2$ZoneKey, a2$odr.by.mile.fuel.adj + a2$ddr.by.mile.fuel.adj, a2$HubPricePerMile, a2$Volume)
+names(a3) <- c('ramps' , 'zones' , 'dray' , 'hubpr' , 'vol')
+
+
+## volume weighted dray ##
+# Take weighted average of dray weighted by volume
+a5 <- sapply(split(a3, a3$ramps), function(x){weighted.mean(x$dray, x$vol)})
+# make data frame from the weighted average
+a6 <- data.frame(names(a5), a5)
+# remove undefined ramp pairs
+vol.w.dray <- a6[!is.na(a5),]
+# reorganize and rename to make df understandable
+vol.w.dray <- data.frame(vol.w.dray[,1], vol.w.dray[,2])
+names(vol.w.dray) <- c('ramp', 'lwm.dray')
+
+rm(a5,a6)
+
+## volume weighted hub price  ##
+# Take weighted average of dray weighted by volume
+a5 <- sapply(split(a3, a3$ramps), function(x){weighted.mean(x$hubpr, x$vol)})
+# make data frame from the weighted average
+a6 <- data.frame(names(a5), a5)
+# remove undefined ramp pairs
+vol.w.hubpr <- a6[!is.na(a5),]
+# reorganize and rename to make df understandable
+vol.w.hubpr <- data.frame(vol.w.hubpr[,1], vol.w.hubpr[,2])
+names(vol.w.hubpr) <- c('ramp', 'lwm.hubpr')
+
+rm(a5,a6)
+
+# put into one dataframe and make names make sense
+hubp           <- data.frame(vol.w.hubpr$ramp, vol.w.hubpr$lwm.hubpr - vol.w.dray$lwm.dray, vol.w.hubpr$lwm.hubpr)
+names(hubp)[1] <- 'ramp.pair'
+names(hubp)[2] <- 'hubc.less.dray'
+names(hubp)[3] <- 'hubc.incl.dray'
+
+#make the equivalent of above but do it for zone pairs
+zones.hub <- data.frame(a3$zones, a3$hubpr - a3$dray)
+names(zones.hub)[1] <- 'zones'
+names(zones.hub)[2] <- 'adj.hub.pr'
+
+
+View(hubp)

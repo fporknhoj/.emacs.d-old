@@ -1,0 +1,10 @@
+#!c:\python\anaconda
+
+import sys
+import pba_summary
+
+makePbaHtmlFile(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+
+# makePbaHtmlFile(921856,'Full Network',
+#                 '2015',
+#                 r"T:\PRICE\WILLIAMS-SONOMA INC\BIDS 2015\07 - POST-BID ANALYSIS\Post Bid Analysis- Williams Sonoma Full Network 2015.xlsx")

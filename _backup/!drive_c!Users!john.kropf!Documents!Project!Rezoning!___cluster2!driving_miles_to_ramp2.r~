@@ -1,0 +1,851 @@
+require(RODBC)
+require(data.table)
+require(sp)
+require(ggmap)
+require(XLConnect)
+options(max.print=1000)
+
+#Function Definitions
+newEngland  <- function(y) {sapply(y, function (x) ifelse(nchar(x)==4,paste("0",x,sep=""),x))}
+newEngland3 <- function(y) {sapply(y, function (x) ifelse(nchar(x)==2,paste("0",x,sep=""),x))}
+
+# database declaration
+db1 <- odbcDriverConnect('driver={SQL Server};server=HUBDWDB01;database=DW2;trusted_connection=true')
+
+# outbound order query
+str.ob.orders <- "
+	select loadnumber as id 
+		,count(loadnumber) as obvol
+		,RTRIM(OriginCity)+' '+RTRIM(originstate) as ocs
+		,left(originzipcode,5) as ozip
+		,rtrim(originrateramp) as ortr
+		,rtrim(originrampscac) as orsc 
+		,rtrim(originrampmarket) as omkt
+	from dw2.dbo.operationalsummary 
+	where dsrdate >= dateadd(year,-1,'2015/02/01')
+		and OriginRampMarket <> '' 
+		and DestinationRampMarket <> ''
+		and loadnumber is not null
+		and EquipmentLength=53 
+		and EquipmentType='CN' 
+		and TransportationMode='IML' 
+		and origincountrycode='usa' 
+		and destinationcountrycode='usa'  
+		and loadnumber is not NULL 
+		and sellinghub not in ('02','34','35','52','53','54','55') 
+		and multistopcode in ('n','') 
+		and HazardousMaterialFlag <> 'y'
+		and orderstatus not in ('cwc','cnl','dlt') 
+		and EquipmentCategory in ('domestic','trailers')
+	group by loadnumber
+		,RTRIM(OriginCity)+' '+RTRIM(originstate)
+		,left(originzipcode,5)
+		,rtrim(originrateramp) 
+		,rtrim(originrampscac) 
+		,rtrim(originrampmarket) "
+
+# inbound order query
+str.ib.orders <- "
+	select loadnumber as id
+		,count(loadnumber) as ibvol
+		,RTRIM(destinationCity)+' '+RTRIM(destinationstate) as dcs
+		,left(destinationzipcode,5) as dzip 
+		,rtrim(destinationrateramp) as drtr
+		,rtrim(destinationrampscac) as drsc 
+		,rtrim(destinationrampmarket) as dmkt
+	from dw2.dbo.operationalsummary 
+	where dsrdate >= dateadd(year,-1,'2015/02/01)
+		and OriginRampMarket <> '' 
+		and DestinationRampMarket <> ''
+		and loadnumber is not null
+		and EquipmentLength=53 
+		and EquipmentType='CN' 
+		and TransportationMode='IML' 
+		and origincountrycode='usa' 
+		and destinationcountrycode='usa'  
+		and loadnumber is not NULL 
+		and sellinghub not in ('02','34','35','52','53','54','55') 
+		and multistopcode in ('n','') 
+		and HazardousMaterialFlag <> 'y'
+		and orderstatus not in ('cwc','cnl','dlt') 
+		and EquipmentCategory in ('domestic','trailers')
+	group by loadnumber
+		,RTRIM(destinationCity)+' '+RTRIM(destinationstate)
+		,left(destinationzipcode,5)
+		,rtrim(destinationrateramp) 
+		,rtrim(destinationrampscac) 
+		,rtrim(destinationrampmarket) "
+
+# get ramp info
+str.dimramp <- "
+	select rtrim(rampmarketgroup) as rampmarket
+		,rtrim(rateramp) as rateramp
+		,rtrim(rampscac) as rampscac
+		,rtrim(rampcity) as rampcity
+		,rtrim(rampstate) as rampstate
+		,rtrim(rampzipcode) as rampzip
+	from dw2.dbo.dimramp 
+	where rampmarketregion is not NULL
+		and rateramp is not null
+        and rampstate in ('AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA',
+						  'HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA',
+						  'MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY',
+						  'NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX',
+						  'UT','VT','VA','WA','WV','WI','WY')  "
+
+# Query the database
+
+## options(stringsAsFactors=F)
+dta.ob <- sqlQuery(db1 ,str.ob.orders, stringsAsFactors=F)
+dta.ib <- sqlQuery(db1 ,str.ib.orders, stringsAsFactors=F)
+dta.dimramp   <- sqlQuery(db1, str.dimramp, stringsAsFactors=F)
+
+	# add missing ramp zips
+# dt_dimramp <- data.table(dta.dimramp)
+
+# fix dimramp 
+dta.dimramp[dta.dimramp$rampscac=='ATLA'  , 'rampzip'] <- '30106'
+dta.dimramp[dta.dimramp$rampscac=='BNSNV' , 'rampzip'] <- '60131'
+dta.dimramp[dta.dimramp$rampscac=='BINDL' , 'rampzip'] <- '18015'
+dta.dimramp[dta.dimramp$rampscac=='CALYD' , 'rampzip'] <- '60617'
+dta.dimramp[dta.dimramp$rampscac=='CHI33' , 'rampzip'] <- '60637'
+dta.dimramp[dta.dimramp$rampscac=='CHITV' , 'rampzip'] <- '60609'
+dta.dimramp[dta.dimramp$rampscac=='GLO1'  , 'rampzip'] <- '60608'
+dta.dimramp[dta.dimramp$rampscac=='GLO2'  , 'rampzip'] <- '60164'
+dta.dimramp[dta.dimramp$rampscac=='LANDE' , 'rampzip'] <- '60629'
+dta.dimramp[dta.dimramp$rampscac=='CINNS' , 'rampzip'] <- '45203'
+dta.dimramp[dta.dimramp$rampscac=='CIT'   , 'rampzip'] <- '91748'
+dta.dimramp[dta.dimramp$rampscac=='DALAS' , 'rampzip'] <- '75149'
+dta.dimramp[dta.dimramp$rampscac=='DENVR' , 'rampzip'] <- '80205'
+dta.dimramp[dta.dimramp$rampscac=='ERAIL' , 'rampzip'] <- '07206'
+dta.dimramp[dta.dimramp$rampscac=='HBG'   , 'rampzip'] <- '17110'
+dta.dimramp[dta.dimramp$rampscac=='HUSTN' , 'rampzip'] <- '77028'
+dta.dimramp[dta.dimramp$rampscac=='GLO4'  , 'rampzip'] <- '60436'
+dta.dimramp[dta.dimramp$rampscac=='KCITY' , 'rampzip'] <- '64120'
+dta.dimramp[dta.dimramp$rampscac=='ICT11' , 'rampzip'] <- '90810'
+dta.dimramp[dta.dimramp$rampscac=='LOSAN' , 'rampzip'] <- '90023'
+dta.dimramp[dta.dimramp$rampscac=='LAT00' , 'rampzip'] <- '90031'
+dta.dimramp[dta.dimramp$rampscac=='MEMPH' , 'rampzip'] <- '38114'
+dta.dimramp[dta.dimramp$rampscac=='MIAMI' , 'rampzip'] <- '33166'
+dta.dimramp[dta.dimramp$rampscac=='MPLS'  , 'rampzip'] <- '55418'
+dta.dimramp[dta.dimramp$rampscac=='MOR'   , 'rampzip'] <- '19047'
+dta.dimramp[dta.dimramp$rampscac=='NRFLK' , 'rampzip'] <- '23324'
+dta.dimramp[dta.dimramp$rampscac=='OAKLA' , 'rampzip'] <- '94607'
+dta.dimramp[dta.dimramp$rampscac=='PITTS' , 'rampzip'] <- '15148'
+dta.dimramp[dta.dimramp$rampscac=='BRKLN' , 'rampzip'] <- '97227'
+dta.dimramp[dta.dimramp$rampscac=='RUTFD' , 'rampzip'] <- '17111'
+dta.dimramp[dta.dimramp$rampscac=='STLOU' , 'rampzip'] <- '63147'
+dta.dimramp[dta.dimramp$rampscac=='SEATL' , 'rampzip'] <- '98134'
+dta.dimramp[dta.dimramp$rampscac=='TOLED' , 'rampzip'] <- '43607'
+dta.dimramp[dta.dimramp$rampscac=='PHOEX' , 'rampzip'] <- '85034'
+dta.dimramp[dta.dimramp$rampscac=='CLMBR' , 'rampzip'] <- '43217'
+dta.dimramp[dta.dimramp$rampscac=='AYE'   , 'rampzip'] <- '01432'
+dta.dimramp[dta.dimramp$rampscac=='CROXT' , 'rampzip'] <- '07307'
+dta.dimramp[dta.dimramp$rampscac=='ALBNY' , 'rampzip'] <- '12200'
+dta.dimramp[dta.dimramp$rampscac=='BUFF'  , 'rampzip'] <- '14200'
+dta.dimramp[dta.dimramp$rampscac=='GRCSL' , 'rampzip'] <- '17225'
+dta.dimramp[dta.dimramp$rampscac=='TAYLR' , 'rampzip'] <- '18517'
+dta.dimramp[dta.dimramp$rampscac=='CHLTE' , 'rampzip'] <- '28200'
+dta.dimramp[dta.dimramp$rampscac=='AUS11' , 'rampzip'] <- '30106'
+dta.dimramp[dta.dimramp$rampscac=='PTWEN' , 'rampzip'] <- '31407'
+dta.dimramp[dta.dimramp$rampscac=='JACVL' , 'rampzip'] <- '32099'
+dta.dimramp[dta.dimramp$rampscac=='TITUS' , 'rampzip'] <- '32780'
+dta.dimramp[dta.dimramp$rampscac=='FTL'   , 'rampzip'] <- '33302'
+dta.dimramp[dta.dimramp$rampscac=='BRIMF' , 'rampzip'] <- '35111'
+dta.dimramp[dta.dimramp$rampscac=='HUNTS' , 'rampzip'] <- '35800'
+dta.dimramp[dta.dimramp$rampscac=='MRIF'  , 'rampzip'] <- '38017'
+dta.dimramp[dta.dimramp$rampscac=='YARDC' , 'rampzip'] <- '60419'
+dta.dimramp[dta.dimramp$rampscac=='HARVY' , 'rampzip'] <- '60426'
+dta.dimramp[dta.dimramp$rampscac=='DUPO'  , 'rampzip'] <- '62239'
+dta.dimramp[dta.dimramp$rampscac=='KIFG'  , 'rampzip'] <- '64147'
+dta.dimramp[dta.dimramp$rampscac=='MAR11' , 'rampzip'] <- '72364'
+dta.dimramp[dta.dimramp$rampscac=='ELPAS' , 'rampzip'] <- '77928'
+dta.dimramp[dta.dimramp$rampscac=='LARED' , 'rampzip'] <- '78040'
+dta.dimramp[dta.dimramp$rampscac=='SAIT'  , 'rampzip'] <- '78073'
+dta.dimramp[dta.dimramp$rampscac=='RIVAL' , 'rampzip'] <- '78537'
+dta.dimramp[dta.dimramp$rampscac=='SALAC' , 'rampzip'] <- '84100'
+dta.dimramp[dta.dimramp$rampscac=='TUC'   , 'rampzip'] <- '85700'
+dta.dimramp[dta.dimramp$rampscac=='ELPST' , 'rampzip'] <- '88008'
+dta.dimramp[dta.dimramp$rampscac=='L.V'   , 'rampzip'] <- '89101'
+dta.dimramp[dta.dimramp$rampscac=='SPA'   , 'rampzip'] <- '89431'
+dta.dimramp[dta.dimramp$rampscac=='LATHP' , 'rampzip'] <- '95330'
+dta.dimramp[dta.dimramp$rampscac=='TAC44' , 'rampzip'] <- '98421'
+
+	# fix dimRamp zip codes because almost EVERY ONE OF THEM are wrong
+		# write.csv(dta.dimramp, 'dimramp.csv', row.names=F)
+dta.dimramp[dta.dimramp$rampscac=='ALBNY' , 'rampzip'] <- '11218'
+dta.dimramp[dta.dimramp$rampscac=='BUFF'  , 'rampzip'] <- '14227'
+dta.dimramp[dta.dimramp$rampscac=='CHLTE' , 'rampzip'] <- '28208'
+dta.dimramp[dta.dimramp$rampscac=='HUNTS' , 'rampzip'] <- '35824'
+dta.dimramp[dta.dimramp$rampscac=='SALAC' , 'rampzip'] <- '84104'
+dta.dimramp[dta.dimramp$rampscac=='TUC'   , 'rampzip'] <- '85706'
+dta.dimramp[dta.dimramp$rampscac=='ELPAS' , 'rampzip'] <- '79915'
+
+	# fix RIVAL ramp orders for ramp that isn't in dimramp b/c it sucks
+dta.ob[dta.ob$orsc=='RIVAL','orzip'] <- '78537'
+dta.ib[dta.ib$drsc=='RIVAL','drzip'] <- '78537'
+
+	# mark bad ramps
+dta.dimramp[nchar(dta.dimramp$rampzip)<5,'rampzip'] <- 'NULL'
+
+	# table(nchar(dta.ob$ozip))
+	# dta.ob$ozip <- lapply(dta.ob$ozip, function (x) ifelse(nchar(x)==4,paste("0",x,sep=""),x))
+	# dta.ib$dzip <- lapply(dta.ob$ozip, function (x) ifelse(nchar(x)==4,paste("0",x,sep=""),x))
+
+dta.ob$ozip <- newEngland(dta.ob$ozip)
+dta.ib$dzip <- newEngland(dta.ib$dzip)
+
+# join ramp zips to each of the tables
+dta.ob$orzip <- dta.dimramp$rampzip[match(dta.ob$orsc, dta.dimramp$rampscac)]
+dta.ib$drzip <- dta.dimramp$rampzip[match(dta.ib$drsc, dta.dimramp$rampscac)]
+
+# unique orders 
+	# nrow(unq.ob);nrow(unq.ib)
+	# unique(unq.ob)
+unq.ob <- with(dta.ob,unique(data.frame(ozip,orzip)))
+unq.ib <- with(dta.ib,unique(data.frame(dzip,drzip)))
+
+# write out unique zip pairs to run miles with rand mcnally
+ ## write.csv(unq.ob, "outbound.csv", row.names=F)
+ ## write.csv(unq.ib,  "inbound.csv", row.names=F)
+writeWorksheetToFile("outbound.xlsx", unq.ob, sheet=1)
+writeWorksheetToFile("inbound.xlsx", unq.ib, sheet=1)
+
+# import mileages 
+ob.miles <- readWorksheetFromFile("outbound.xlsx" ,sheet=1)
+ib.miles <- readWorksheetFromFile("inbound.xlsx" ,sheet=1)
+ 
+# subset to run google miles on the ones that returned no miles w/ RM 
+ob.miles.found <- subset(ob.miles, ob.miles$odist!=-1)
+ib.miles.found <- subset(ib.miles, ib.miles$ddist!=-1)
+
+ob.miles.notfound <- subset(ob.miles, ob.miles$odist==-1)
+ib.miles.notfound <- subset(ib.miles, ib.miles$ddist==-1)
+# ob.miles.notfound$dist <- NULL
+# ib.miles.notfound$dist <- NULL
+
+# run google miles
+require(sp)
+require(ggmap)
+ob.google <- mapdist(ob.miles.notfound$ozip, ob.miles.notfound$orzip, mode="driving")
+ib.google <- mapdist(ib.miles.notfound$dzip, ib.miles.notfound$drzip, mode="driving")
+
+# obgoogtest <- head(ob.miles.notfound)
+# obgoogtestr <- mapdist(obgoogtest$ozip, obgoogtest$orzip)
+# # google_results <- mapdist(u_null_miles$orderzip, u_null_miles$rampzip, mode = "driving")
+
+fob_miles <- rbind(ob.miles.found, 
+	data.frame(ozip = ob.google$from, orzip=ob.google$to, odist = ob.google$miles))
+fib_miles <- rbind(ib.miles.found, 
+	data.frame(dzip = ib.google$from, drzip=ib.google$to, ddist = ib.google$miles))
+
+
+# Apply Miles to order data
+require(data.table)
+dt_ob <- data.table(dta.ob, key='ozip,orzip')
+dt_ib <- data.table(dta.ib, key='dzip,drzip')
+dt_obm <- data.table(fob_miles, key='ozip,orzip')
+dt_ibm <- data.table(fib_miles, key='dzip,drzip')
+
+dt_ot <- dt_ob[dt_obm]
+dt_in <- dt_ib[dt_ibm]
+# a[is.na(odist)]
+# b[is.na(ddist)]
+dt_in[dzip=='90000' , dzip := '90058' ]
+dt_in[dzip=='92269' , dzip := '92251' ]
+dt_in[dzip=='75523' , dzip := '77523' ]
+dt_in[dzip=='99943' , dzip := '92251' ]
+
+# unique(b[is.na(ddist), dzip ])
+
+redoa <- unique(dt_in[is.na(ddist),.(dzip,drzip)])
+# b <- b[!is.na(ddist)]
+redog <- mapdist(redoa[,dzip], redoa[,drzip], mode="driving")
+redog <- data.table(data.frame(dzip=redog$from, drzip=redog$to, ddist=redog$miles) 
+	, key='dzip,drzip')
+setkey(dt_in,dzip,drzip)
+# b <- b[redog]
+dt_in[ dzip=='77523' & drzip=='77028' & is.na(ddist), ddist:= redog[ dzip=='77523' & drzip=='77028' ,ddist] ]
+dt_in[ dzip=='90058' & drzip=='90031' & is.na(ddist), ddist:= redog[ dzip=='90058' & drzip=='90031' ,ddist] ]
+dt_in[ dzip=='92251' & drzip=='91748' & is.na(ddist), ddist:= redog[ dzip=='92251' & drzip=='91748' ,ddist] ]
+dt_in[is.na(ddist)]
+
+# Miles are Complete
+## Full Join of out and in dataframes using data.table, so you have to do the unique(key) thing b/c right outer is only default join
+setkey(dt_ot,id) ; setkey(dt_in,id) ; dt_cb <- dt_ot[dt_in] ; dt_cb #merge(dt_ob,dt_ib,by="id",all=T) ; dt_cb 
+dt_c2 <- dt_ot[dt_in[J( unique(c(dt_ot[,id],dt_in[,id])) )]] #uk <- unique(c(dt_ot[,id],dt_in[,id]))
+
+## system.time(dt_ot[dt_in[J( unique(c(dt_ot[,id],dt_in[,id])) )]])
+
+
+dt_ot[,o3 := substr(ozip,1,3)]
+dt_in[,d3 := substr(dzip,1,3)]
+
+dt_otf <- unique(dt_ot[,obdr := mean(odist), by=.(o3)][,.(o3,odr)])
+dt_inf <- unique(dt_in[,ibdr := mean(ddist), by=.(d3)][,.(d3,ddr)])
+setkey(dt_otf, o3)
+setkey(dt_inf, d3)
+
+dta.ob <- data.table(dta.ob,omkt)
+dta.ib <- data.table(dta.ib,dmkt)
+setkey(dta.ob,omkt)
+setkey(dta.ib,dmkt)
+
+########################################################################################
+########################################################################################
+########################################################################################
+# Ratio of Empty to Loaded
+########################################################################################
+########################################################################################
+########################################################################################
+require(RODBC)
+require(data.table)
+require(reshape2)
+
+db_pa <- odbcDriverConnect('driver={SQL Server};server=HUBDWDB01;database=DW_PA;trusted_connection=true')
+
+dt_hgt <- data.table(sqlQuery(db_pa,"
+	select * from rstrauss.JohnKropfMoveDetail
+	",stringsAsFactors=F))
+
+dt_hgt[MoveType %in% c("BOBTAIL","DEADHEAD","OTHER","empty"), MoveType := "EMPTY"]
+
+dt_hgt2 <- dt_hgt[,.(avgmiles = mean(Miles)),by=.(OriginZip3,DestinationZip3,MoveType)]
+setkey(dt_hgt2,OriginZip3,DestinationZip3)
+
+dt_hgt2[,.(OriginZip3,DestinationZip3,avgmiles,MoveType)]
+dt_hgt2[,OriginZip3 := newEngland3(dt_hgt3[,OriginZip3])]
+dt_hgt2[,DestinationZip3 := newEngland3(dt_hgt3[,DestinationZip3])]
+
+dt_hgtf <- reshape(dt_hgt2,direction="wide",idvar=c("OriginZip3","DestinationZip3"),timevar="MoveType")
+
+setnames(dt_hgtf, "OriginZip3", "o3")
+setnames(dt_hgtf, "DestinationZip3", "d3")
+setnames(dt_hgtf, "avgmiles.LOADED", "loaded_tot")
+setnames(dt_hgtf, "avgmiles.EMPTY", "empty_tot")
+
+dt_hgtf[is.na(loaded_tot),loaded_tot:=0]
+dt_hgtf[is.na(empty_tot),empty_tot:=0]
+
+dt_hdtot <- unique(dt_hgtf[,empty := mean(empty_tot), by=.(o3)][,loaded := mean(loaded_tot), by = .(o3)][,.(o3,loaded,empty)])
+dt_hdtin <- unique(dt_hgtf[,empty := mean(empty_tot), by=.(d3)][,loaded := mean(loaded_tot), by = .(d3)][,.(d3,loaded,empty)])
+
+dt_hgtf[,Ratio := empty / (loaded + empty),by=.(o3,d3)]
+## dt_hgtf[,c("empty_tot","loaded_tot") := NULL]
+
+dt_hdtot[,Ratio_ot := empty/(loaded + empty),by=.(o3)]
+dt_hdtin[,Ratio_in := empty/(loaded + empty),by=.(d3)]
+## dt_hdtot[,c("empty_tot","loaded_tot") := NULL]
+## dt_hdtin[,c("empty_tot","loaded_tot") := NULL]
+
+dt_hdtot[,o3 := newEngland3(o3)]
+dt_hdtin[,d3 := newEngland3(d3)]
+
+setkey(dt_hdtot, o3)
+setkey(dt_hdtin, d3)
+
+########################################################################################
+########################################################################################
+########################################################################################
+# Volume Balance 
+########################################################################################
+########################################################################################
+########################################################################################
+library(RODBC)
+library(data.table)
+
+# Database Connection
+DW2 <- odbcDriverConnect('driver={SQL Server};server=HUBDWDB01;database=DW2;trusted_connection=true')
+
+#SQL Query
+dt_volume <- data.table(sqlQuery(DW2,
+"select LoadNumber as id
+,Count(LoadNumber) as vol1
+,sum(Volume) as vol2
+,cast(left(OriginZipCode,5) as varchar(5)) as oz
+,cast(left(DestinationZipCode,5) as varchar(5)) as dz
+,cast(left(OriginZipCode,3) as varchar(3)) as o3
+,cast(left(DestinationZipCode,3) as varchar(3)) as d3
+from dbo.OperationalSummary
+where dsrdate >= dateadd(year,-1,'2015/02/01')
+	and OriginRampMarket <> '' 
+	and DestinationRampMarket <> ''
+	and loadnumber is not null
+	and EquipmentLength=53 
+	and EquipmentType='CN' 
+	and TransportationMode='IML' 
+	and origincountrycode='usa' 
+	and destinationcountrycode='usa'  
+	and loadnumber is not NULL 
+	and sellinghub not in ('02','34','35','52','53','54','55') 
+	and multistopcode in ('n','') 
+	and HazardousMaterialFlag <> 'y'
+	and orderstatus not in ('cwc','cnl','dlt') 
+	and EquipmentCategory in ('domestic','trailers')
+group by loadnumber
+,OriginZipCode
+,DestinationZipCode",stringsAsFactors=F))
+
+dt_vl3 <- unique(dt_volume[,.(o3,d3,vol2)][,vol2 := sum(vol2), by=.(o3,d3)])
+
+dt_vl3[, o3 := newEngland3(o3) ][, d3 := newEngland3(d3) ] ## ; dt_vl3[, d3 := newEngland3(d3) ]
+dt_vl3[,vol2 := as.numeric(vol2)] ## ; str(dt_vl3)
+
+#Absolute Volume
+## dt_vl3ot <- unique(dt_vl3[,.(o3,vol2)][,vol_ot:=mean(vol2)*-1,by=(o3)][,.(o3,vol_ot)])
+dt_vl3ot <- unique(dt_vl3[,.(o3,vol2)][,vol_ot:=mean(vol2)*-1,by=o3][,.(o3,vol_ot)][,vol_ot := sum(vol_ot),by=o3])
+## dt_vl3in <- unique(dt_vl3[,.(d3,vol2)][,vol_in:=mean(vol2)*1 ,by=(d3)][,.(d3,vol_in)])
+dt_vl3in <- unique(dt_vl3[,.(d3,vol2)][,vol_in:=mean(vol2)  , by=d3][,.(d3,vol_in)][,vol_in := sum(vol_in),by=d3])
+
+setkey(dt_vl3ot, o3)
+setkey(dt_vl3in, d3)
+
+str(dt_vl3in)
+
+#Volume Balance 
+dt_bl <- dt_vl3ot[dt_vl3in[J( unique(c(dt_vl3ot[,o3],dt_vl3in[,d3])) )]]
+
+dt_bl[is.na(vol_ot),vol_ot:=0][is.na(vol_in),vol_in:=0][,bal:=vol_ot + vol_in]
+dt_bl
+
+nrow(dt_bl);nrow(dt_vl3in)
+
+
+########################################################################################
+########################################################################################
+########################################################################################
+# Combine
+########################################################################################
+########################################################################################
+########################################################################################
+require(data.table)
+
+## str(dt_bl);str(dt_hdtin);str(dt_hdtot);str(dt_otf);str(dt_inf);str(dt_vl3ot);str(dt_vl3in)
+
+unq <- unique( c( dt_bl[,o3], dt_hdtin[,d3], dt_hdtot[,o3], dt_otf[,o3], dt_inf[,d3], dt_vl3ot[,o3], dt_vl3in[,d3] ) )
+setkey(dt_bl,o3);setkey(dt_hdtin,d3);setkey(dt_hdtot,o3);setkey(dt_otf,o3);setkey(dt_inf,d3);setkey(dt_vl3ot,o3);setkey(dt_vl3in,d3)
+fin <- dt_bl[dt_hdtin[dt_hdtot[dt_otf[dt_inf[J(unq)]]]]]
+
+setnames(fin, "o3"       , "z3")
+setnames(fin, "vol_ot"   , "avObVol")
+setnames(fin, "vol_in"   , "avIbVol")
+setnames(fin, "bal"      , "avBal")
+setnames(fin, "loaded"   , "ibDrayLoad")
+setnames(fin, "empty"    , "ibDrayEmty")
+setnames(fin, "Ratio_in" , "ibDrayLeRatio")
+setnames(fin, "i.loaded" , "obDrayLoad")
+setnames(fin, "i.empty"  , "obDrayEmty")
+setnames(fin, "Ratio_ot" , "obDrayLeRatio")
+setnames(fin, "odr"      , "obDrayMiles")
+setnames(fin, "ddr"      , "ibDrayMiles")
+
+fin[is.na(z3)            , z3            := 0]
+fin[is.na(avObVol)       , avObVol       := 0]
+fin[is.na(avIbVol)       , avIbVol       := 0]
+fin[is.na(avBal)         , avBal         := 0]
+fin[is.na(ibDrayLoad)    , ibDrayLoad    := 0]
+fin[is.na(ibDrayEmty)    , ibDrayEmty    := 0]
+fin[is.na(ibDrayLeRatio) , ibDrayLeRatio := 0]
+fin[is.na(obDrayLoad)    , obDrayLoad    := 0]
+fin[is.na(obDrayEmty)    , obDrayEmty    := 0]
+fin[is.na(obDrayLeRatio) , obDrayLeRatio := 0]
+fin[is.na(obDrayMiles)   , obDrayMiles   := 0]
+fin[is.na(ibDrayMiles)   , ibDrayMiles   := 0]
+
+setkey(fin, z3);fin <- fin[!"0NA"]
+
+
+########################################################################################
+########################################################################################
+########################################################################################
+# Combine
+########################################################################################
+########################################################################################
+########################################################################################
+require(data.table)
+require(RODBC)
+require(cluster)
+require(Rclusterpp)
+require(foreign)
+require(XLConnect)
+require(shapefiles)
+
+xlClusterDisc <- function(cd.collections, cd.fin, cd.outputfilename) {
+    clarkson <- data.table(cbind(zip=names(cd.collections),collection=cd.collections))
+    setkey(clarkson,zip)
+
+    ## str(cd.fin)
+    setkey(cd.fin,z3)
+
+    hammond <- cd.fin[clarkson]
+
+    may <- hammond[,list(sMeanOBVol=mean(avObVol),
+                         sMeanIBVol=mean(avIbVol),
+                         sMeanBal=mean(avBal),
+                         sMeanOBEmptyMileRatio=mean(obDrayLeRatio),
+                         sMeanIBEmptyMileRatio=mean(ibDrayLeRatio),
+                         sMeanOBDrayMiles=mean(obDrayMiles),
+                         sMeanIBDrayMiles=mean(ibDrayMiles)),by=collection]
+    setkey(may,collection)
+
+    clarkson[,collection := as.factor(collection)]
+    stig2 <- split(clarkson, clarkson$collection)
+
+
+    stig <- unique(clarkson[,zip:=paste(zip,sep=",",collapse=","),by=collection])
+    ## stig <- unique(clarkson[,zip:= do.call(paste, c(as.list(zip), sep=",")) ,by=collection])
+    setkey(stig,collection)
+
+    dawe <- stig[may]
+    writeWorksheetToFile("cluster_disc.xlsx", dawe, cd.outputfilename)
+}
+
+
+row.names(fin) <- fin[,z3]
+
+str(fin)
+
+fin_t <- data.frame(fin[,.(avObVol,avIbVol,avBal,ibDrayLoad,ibDrayEmty,ibDrayLeRatio,obDrayLoad,obDrayEmty,obDrayLeRatio,obDrayMiles,ibDrayMiles)])
+row.names(fin_t) <- fin[,z3]
+
+head(fin_t)
+
+fin_t_scalede <- data.table(apply(fin_t ,2 ,scale))
+row.names(fin_t_scaled) <- row.names(fin_t)
+
+
+## write.csv(fin_t_scaled, "c:\\users\\john.kropf\\desktop\\dimensions_scaled.csv", row.names=T)
+## write.csv(fin_t, "c:\\users\\john.kropf\\desktop\\dimensions.csv", row.names=T)
+
+
+write.csv(fin_t, "c:/users/john.kropf/desktop/fin.csv", row.names=T)
+
+result1 <- Rclusterpp.hclust(fin_t, method="average",distance="manhattan")
+r1 <- as.dendrogram(result1)
+
+qq <- princomp(fin_t)
+
+qqd <- dist(qq$scores)
+qqc <- hclust(qqd)
+qqcd <- as.dendrogram(qqc)
+
+qqdi  <- diana(qqd, diss=T, metric = "manhattan") 
+qqdi2 <- diana(qq$scores, diss=F, metric = "manhattan", stand=F) 
+qqag  <- agnes(qqd, diss=T, metric = "manhattan")
+
+dian2  <- as.dendrogram(qqdi2)
+qqdi2_up <- cut(dian2,500000)
+
+## plot(qqdi2_up) ## str(qqdi2_up) ## plot(qqdi2_up$upper) ## str(qqdi2_up$upper) ## plot(qqdi2_up$lower) ## str(qqdi2_up$lower) ## class(qqid2_up$lower) ##str(qqdi2_up) ## qqdi2_up$merge;qqdi2_up$height;qqdi2_up$order
+## trial of dynamictreecut # require(dynamicTreeCut) # dt <- cutreeDynamic(qqc) ## str(dt) ## View(dt) ## plot(qqc) ## plot(qqdi2)
+
+qqc_1 <- cutree(qqc,k=45)
+##write.csv(qqc_1, "h1.csv")
+write.dbf(list(dbf=list(dbf=data.table(cbind(names(qqc_1),qqc_1)))), "h1.dbf")
+xlClusterDisc(qqc_1, fin, "Hir 44 Groups")
+
+qqc_2 <- cutree(qqc,k=78)
+##write.csv(qqc_2, "h2.csv")
+write.dbf(list(dbf=list(dbf=data.table(cbind(names(qqc_2),qqc_2)))), "h2.dbf")
+xlClusterDisc(qqc_2, fin, "Hir 78 Groups")
+
+qqc_3 <- cutree(qqc,h=3500)
+##write.csv(qqc_3, "h3.csv")
+write.dbf(list(dbf=list(dbf=data.table(cbind(names(qqc_3),qqc_3)))), "h3.dbf")
+xlClusterDisc(qqc_3, fin, "Hir Cut at 3500")
+
+qqc_4 <- cutree(qqc,h=2500)
+##write.csv(qqc_3, "h4.csv")
+write.dbf(list(dbf=list(dbf=data.table(cbind(names(qqc_4),qqc_4)))), "h4.dbf")
+xlClusterDisc(qqc_4, fin, "Hir Cut at 2500")
+
+qqc_5 <- cutree(qqc,h=1250)
+##write.csv(qqc_3, "h5.csv")
+write.dbf(list(dbf=list(dbf=data.table(cbind(names(qqc_5),qqc_5)))), "h5.dbf")
+xlClusterDisc(qqc_5, fin, "Hir Cut at 1250")
+
+km2 <- kmeans(qq$scores, centers = length(unique( c(dta.ob[,omkt], dta.ib[,dmkt] )))  ,iter.max=100)
+write.dbf(list(dbf=list(dbf=data.table(cbind(names(km2$cluster),km2$cluster)))), "km2.dbf")
+xlClusterDisc(km2$cluster, fin, "Partitioning 45 Groups")
+
+km2 <- kmeans(qq$scores, centers = 78  ,iter.max=100)
+write.dbf(list(dbf=list(dbf=data.table(cbind(names(km2$cluster),km2$cluster)))), "km3.dbf")
+xlClusterDisc(km2$cluster, fin, "Partitioning 78 Groups")
+
+#see how many groups result from cutting at height x
+unique(cutree(qqc,h=1250))
+
+plot(qqc)
+
+########################################################################################
+########################################################################################
+########################################################################################
+# Force spatialiality on top of clusters 
+########################################################################################
+########################################################################################
+########################################################################################
+
+
+require(dynamicTreeCut)
+dyCut <- cutreeDynamic(qqc ,minClusterSize=3 ,method="hybrid", distM=as.matrix(dist(qq$scores)))
+
+length(qqc)
+head(qqc)
+str(qqc)
+
+
+class(dyCut)
+names(dyCut)
+
+dt.dyCut <- data.table(cbind(names(dyCut),dyCut))
+View(dt.dyCut)
+
+class(dist(qq$scores))
+
+##################################################################
+
+require(SpatialEpi)
+
+
+##################################################################
+
+require(rgdal)
+require(maptools)
+require(sp)
+require(spdep)
+require(spatstat)
+require(rgdal)
+
+scaled_fin <- data.table(apply(fin_t ,2 ,scale))
+
+#read shapefile 
+shp_z3  <- readShapePoly("T:/PRICE/Market Based Pricing/Rezoning/2015-03/shapefile/zip3-md-noalaska.shp")
+shp_z3a <- read.shp("T:/PRICE/Market Based Pricing/Rezoning/2015-03/shapefile/zip3-md-noalaska.shp")
+identical(shp_z3, shp_z3a)
+
+## lapply(list(shp_z3, shp_z3a), str)
+
+gal <- read.gal("C:/Users/john.kropf/Desktop/zip3-md-noalaska.gal", region.id = rownames(fin_t))
+
+nb1 <- poly2nb(shp_z3)
+
+class(nb1)
+View(nb1)
+str(nb1)
+nb1 region.id
+attr(nb1, class)
+                 
+attributes(nb1)
+
+
+
+## Guo, D. (2008). Regionalization with dynamically constrained agglomerative
+## clustering and partitioning (REDCAP). International Journal of Geographical
+## Information Science, 22(7), 801–823.
+
+## Guo, D., Gahegan, M., MacEachren, A. M., & Zhou, B. (2005). Multivariate analysis
+## and geovisualization with an integrated geographic knowledge discovery
+## approach. Cartography and Geographic Information Science, 32(2), 113–132.
+
+## Guo, D., Peuquet, D., & Gahegan, M. (2003). ICEAGE: Interactive clustering and
+## exploration of large and high-dimensional geodata. Geoinformatica, 7(3),
+## 229–253.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##plot(qqag) ##plot(qqdi) ## dian <- as.dendrogram(qqdi)
+
+## install.packages("dynamicTreeCut")
+## unique(dta.ob[dta.ib[ J( unique( c(dta.ob[,omkt], dta.ib[,dmkt] )))]][,.(omkt,dmkt)])
+## dta.ob[dta.ib[ J( unique( c(dta.ob[,omkt], dta.ib[,dmkt] )))]]
+## dta.ob[dta.ib]
+
+
+## clarkson <- data.table(cbind(zip=names(qqc_2),collection=qqc_2))
+## setkey(clarkson,zip)
+
+##str(fin)
+## setkey(fin,z3)
+
+## hammond <- fin[clarkson]
+
+## may <- hammond[,list(sMeanOBVol=mean(avObVol),
+##                      sMeanIBVol=mean(avIbVol),
+##                      sMeanBal=mean(avBal),
+##                      sMeanOBEmptyMileRatio=mean(obDrayLeRatio),
+##                      sMeanIBEmptyMileRatio=mean(ibDrayLeRatio),
+##                      sMeanOBDrayMiles=mean(obDrayMiles),
+##                      sMeanIBDrayMiles=mean(ibDrayMiles)),by=collection]
+## setkey(may,collection)
+
+## ## require(reshape2)
+## ## stig <- reshape(clarkson,idvar="collection",timevar="zip",direction="long")
+## ## clarkson$collection <- as.factor(clarkson$collection)
+## ## require(plyr)
+## clarkson[,collection := as.factor(collection)]
+## stig2 <- split(clarkson, clarkson$collection)
+## ## stig2 <- data.table(unique(ddply(clarkson,"collection", transform ,zip=paste(zip,sep=',',collapse = ","))))
+
+## stig <- unique(clarkson[,zip:=paste(zip,sep=",",collapse=","),by=collection])
+## ## stig <- unique(clarkson[,zip:= do.call(paste, c(as.list(zip), sep=",")) ,by=collection])
+## setkey(stig,collection)
+
+## dawe <- stig[may]
+## writeWorksheetToFile("dawe4.xlsx", dawe, "breakout")

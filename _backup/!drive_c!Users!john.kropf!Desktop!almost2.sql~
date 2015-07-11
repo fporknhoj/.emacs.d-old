@@ -1,0 +1,360 @@
+-- begin try drop table #t0 drop table #t1 drop table #t2 drop table #t3 drop table #t4 drop table #t5
+-- drop table dw_pa.dbo.supply_trial_1 end try
+--     begin catch end catch
+
+--     declare @dt1 as date = '20jun2015'
+
+--     ;with	a as (
+--     select  * from (values (1),(2),(3),(4),(5),(6),(7) ) dow(dow) )
+-- select	a.dow as dow
+--     ,		DestinationRampSubMarket as mkt
+-- into	#t0
+-- from	dw2.dbo.operationalsummary
+--     cross 
+--     apply	a
+-- where	DestinationRampSubMarket <> ''
+--     and		ArriveDeliveryLocationDate between DATEADD(week,-6,@dt1) and @dt1
+--     and		TransportationMode in ('IML','RPO')
+--     and		transportationsubmode=''
+--     and		orderstatus in ('DSP','RBL','DLV')
+--     and		EquipmentCategory <> 'ISO'
+-- group 
+--     by		a.dow
+--     ,		DestinationRampSubMarket
+
+
+
+-- select * from #t0
+-- order by Mkt,dow
+
+
+
+-- select	b.dow
+--     ,		b.mkt
+--     ,		SUM(coalesce(a.volume,0)) / (6) as vol
+-- into	#t1
+-- from	DW2.dbo.OperationalSummary a 
+--     right 
+--     join	#t0 b on DATEPART(weekday,a.ArriveDeliveryLocationDate)=b.dow and a.DestinationRampSubMarket =b.mkt
+-- where	DestinationRampSubMarket <> ''
+--     and		ArriveDeliveryLocationDate between DATEADD(week,-6,@dt1) and @dt1
+--     and		TransportationMode in ('IML','RPO')
+--     and		transportationsubmode=''
+--     and		orderstatus in ('DSP','RBL','DLV')
+--     and		EquipmentCategory <> 'ISO'
+-- group 
+--     by		b.dow
+--     ,		b.mkt 
+
+
+
+-- select * from #t1
+-- order by Mkt,dow
+
+
+
+
+-- select	DATEPART(weekday,dsrdate) as dow
+--     ,		DestinationRampSubMarket as mkt
+--     ,		SUM(coalesce(volume,0)) / convert(float,6*4) as volwkm6
+-- into	#t2
+-- from	DW2.dbo.OperationalSummary
+-- where	DestinationRampSubMarket <> ''
+--     and		DSRDate between DATEADD(week,-6,@dt1) and @dt1
+--     and		TransportationMode in ('IML')
+--     and		transportationsubmode=''
+--     and		orderstatus in ('DSP','RBL','DLV')
+--     and		EquipmentCategory <> 'ISO'
+-- group 
+--     by		DATEPART(weekday,DSRDate) 
+--     ,		DestinationRampSubMarket 
+
+
+
+-- select * from #t2
+-- order by Mkt,dow
+
+
+
+-- select	b.dow
+--     ,		b.mkt
+--     ,		SUM(coalesce(convert(float,volume),convert(float,0))) / CONVERT(float,4)  as volwkm1
+-- into	#t3
+-- from	DW2.dbo.OperationalSummary a
+--     right
+--     join	#t0 b
+--     on		DATEPART(weekday,a.DSRDate)=b.dow and a.DestinationRampSubMarket=b.mkt
+-- where	DestinationRampSubMarket <> ''
+--     and		DSRDate between DATEADD(week,-1,@dt1) and @dt1
+--     and		TransportationMode in ('IML')
+--     and		transportationsubmode=''
+--     and		orderstatus in ('DSP','RBL','DLV')
+--     and		EquipmentCategory <> 'ISO'
+-- group    
+--     by		b.dow
+--     ,		b.mkt
+
+
+
+-- select * from #t3
+-- order by Mkt,dow
+
+
+
+-- select	a.dow
+--     ,		a.mkt
+--     ,		case when a.volwkm6 = 0 then 1
+--     else coalesce(convert(float,b.volwkm1) / convert(float,a.volwkm6),0) end as volpct
+-- -- ,		coalesce(b.volwkm1,0) as mos1
+-- -- ,		coalesce(a.volwkm6,0) as mos6
+-- into	#t4
+-- from	#t2 a
+--     left 
+--     join	#t3 b
+--     on		a.mkt = b.mkt
+--     and		a.dow = b.dow
+
+
+
+
+-- select * from #t4
+-- order by Mkt,dow
+
+
+
+
+-- select	a.dow
+--     ,		a.mkt
+--     ,		convert(float,a.vol) * convert(float,b.volpct) as volend
+-- into	#t5
+-- from	#t1 a
+--     left 
+--     join	#t4 b
+--     on		a.dow = b.dow
+--     and		a.mkt = b.mkt
+
+
+
+-- --begin try drop table dw_pa.dbo.supply_trial_1 end try begin catch end catch
+-- select case when a.mkt in ('ATLAL','ATLAR') then 'ATLA'
+--     when a.mkt in ('DALL','DALR') then 'DALAS'
+--     when a.mkt in ('CHMET','CHIL','CHMI','CHOH','CHIN','CHCAN','CHWI') then 'CHGO'
+--     else a.mkt end as market
+--     ,a.mkt as submarket
+--     ,a.dow as weekday
+--     ,a.volend as deliveries
+-- into dw_pa.dbo.supply_trial_1
+-- from #t5 a
+-- order by submarket
+--     ,weekday
+
+
+-- -------------------------------------------------
+-- stacked
+-- use fcst pku for del ratio for 2nd wk computation
+-- -------------------------------------------------
+
+begin try drop table #t0
+drop table #t1
+drop table #t2
+drop table #t3
+drop table #t4
+drop table #t5
+drop table #t6
+drop table dw_pa.dbo.supply_trial_1 end try
+begin catch end catch
+
+declare @dt1 as date = getdate() --'20jun2015'
+
+;with	a as (
+select  * from (values (1),(2),(3),(4),(5),(6),(7) ) dow(dow) )
+select	a.dow as dow
+,		DestinationRampSubMarket as mkt
+into	#t0
+from	dw2.dbo.operationalsummary
+cross 
+apply	a
+where	DestinationRampSubMarket <> ''
+and		ArriveDeliveryLocationDate between DATEADD(week,-6,@dt1) and @dt1
+and		TransportationMode in ('IML','RPO')
+and		transportationsubmode=''
+and		orderstatus in ('DSP','RBL','DLV')
+and		EquipmentCategory <> 'ISO'
+group 
+by		a.dow
+,		DestinationRampSubMarket
+
+
+
+-- select * from #t0
+-- order by Mkt,dow
+
+
+
+select	b.dow
+,		b.mkt
+,		SUM(coalesce(a.volume,0)) / (6) as vol
+into	#t1
+from	DW2.dbo.OperationalSummary a 
+right 
+join	#t0 b on DATEPART(weekday,a.ArriveDeliveryLocationDate)=b.dow and a.DestinationRampSubMarket =b.mkt
+where	DestinationRampSubMarket <> ''
+and		ArriveDeliveryLocationDate between DATEADD(week,-6,@dt1) and @dt1
+and		TransportationMode in ('IML','RPO')
+and		transportationsubmode=''
+and		orderstatus in ('DSP','RBL','DLV')
+and		EquipmentCategory <> 'ISO'
+group 
+by		b.dow
+,		b.mkt 
+
+
+
+-- select * from #t1
+-- order by Mkt,dow
+
+
+
+
+select	DATEPART(weekday,dsrdate) as dow
+,		DestinationRampSubMarket as mkt
+,		SUM(coalesce(volume,0)) / convert(float,6*4) as volwkm6
+into	#t2
+from	DW2.dbo.OperationalSummary
+where	DestinationRampSubMarket <> ''
+and		DSRDate between DATEADD(week,-6,@dt1) and @dt1
+and		TransportationMode in ('IML')
+and		transportationsubmode=''
+and		orderstatus in ('DSP','RBL','DLV')
+and		EquipmentCategory <> 'ISO'
+group 
+by		DATEPART(weekday,DSRDate) 
+,		DestinationRampSubMarket 
+
+
+
+-- select * from #t2
+-- order by Mkt,dow
+
+
+
+select	b.dow
+,		b.mkt
+,		SUM(coalesce(convert(float,volume),convert(float,0))) / CONVERT(float,4)  as volwkm1
+into	#t3
+from	DW2.dbo.OperationalSummary a
+right
+join	#t0 b
+on		DATEPART(weekday,a.DSRDate)=b.dow and a.DestinationRampSubMarket=b.mkt
+where	DestinationRampSubMarket <> ''
+and		DSRDate between DATEADD(week,-1,@dt1) and @dt1
+and		TransportationMode in ('IML')
+and		transportationsubmode=''
+and		orderstatus in ('DSP','RBL','DLV')
+and		EquipmentCategory <> 'ISO'
+group    
+by		b.dow
+,		b.mkt
+
+
+
+-- select * from #t3
+-- order by Mkt,dow
+
+
+
+select	a.dow
+,		a.mkt
+,		case when a.volwkm6 = 0 then 1
+        else coalesce(convert(float,b.volwkm1) / convert(float,a.volwkm6),0) end as volpct
+-- ,		coalesce(b.volwkm1,0) as mos1
+-- ,		coalesce(a.volwkm6,0) as mos6
+into	#t4
+from	#t2 a
+left 
+join	#t3 b
+on		a.mkt = b.mkt
+and		a.dow = b.dow
+
+
+
+
+-- select * from #t4
+-- order by Mkt,dow
+
+
+
+
+select	a.dow
+,		a.mkt
+,		convert(float,a.vol) * convert(float,b.volpct) as volend
+into	#t5
+from	#t1 a
+left 
+join	#t4 b
+on		a.dow = b.dow
+and		a.mkt = b.mkt
+
+
+
+--begin try drop table dw_pa.dbo.supply_trial_1 end try begin catch end catch
+select  case when a.mkt in ('ATLAL','ATLAR') then 'ATLA'
+        when a.mkt in ('DALL','DALR') then 'DALAS'
+        when a.mkt in ('CHMET','CHIL','CHMI','CHOH','CHIN','CHCAN','CHWI') then 'CHGO'
+        else a.mkt end as market
+,       a.mkt as submarket
+,       a.dow as weekday
+,       a.volend as deliveries
+into    #t6
+from    #t5 a
+order
+by      submarket
+,       weekday
+
+begin try drop table dw_pa.dbo.supply_fcst end try begin catch end catch 
+
+create 
+table		dw_pa.dbo.supply_trial_1
+(market		varchar(5)
+,submarket	varchar(5)
+,dt			date
+,volume		float
+,kind		varchar(3));
+
+;with t1 as (
+select	a.OriginRampMarket as Market
+,		a.OriginRampSubMarket as SubMarket
+,		a.ForecastDate as Dt
+,		sum(a.volume) as Pickups
+,		min(b.deliveries) as Deliveries
+from    dw_pa.dbo.big_box_demand_forecast_updated a
+right 
+join	dw_pa.dbo.supply_trial_1 b 
+on		a.OriginRampSubMarket = b.submarket
+and		DATEPART(weekday,a.ForecastDate) = b.weekday
+where	a.OriginRampSubMarket is not null
+group
+by		a.OriginRampMarket 
+,		a.OriginRampSubMarket
+,		ForecastDate
+)
+
+insert 
+into	dw_pa.dbo.supply_fcst
+select	z.Market
+,		z.submarket
+,		z.Dt
+,		z.Pickups as Volume
+,		'PKU' as Kind
+from t1 z
+union 
+select	x.Market
+,		x.submarket
+,		x.Dt
+,		x.Pickups as Volume
+,		'DEL' as Kind
+from t1 x
+
+
+
+

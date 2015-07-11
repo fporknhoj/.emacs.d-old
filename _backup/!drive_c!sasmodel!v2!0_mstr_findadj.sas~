@@ -1,0 +1,66 @@
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***************** make manual adjustments *****************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+
+proc import datafile= 'c:\matt.csv' dbms= csv out= work.outsideadj replace;
+run;
+
+data work.outsideadj;
+    infile "c:\matt.csv" dlm=",";
+    input OriginRmapMarket $ adj 10.10;
+run;
+
+/* data work.outsideadj; */
+/* 	set work.outsideadj; */
+/* 	rename o_mkt = OriginRampMarket; */
+/* 	rename Adj__ = adj; */
+/* run; */
+
+proc contents data= work.outsideadj;
+run;
+
+proc sort data= work.outsideadj;
+	by OriginRampMarket;
+run;
+
+proc sort data= finalfcstoutput;
+	by OriginRampMarket;
+run;
+
+proc contents data= finalfcstoutput;
+run;
+
+data finalfcstoutput2;
+	merge finalfcstoutput outsideadj;
+	by originrampmarket;
+run;
+
+data finalfcstoutput2; 
+	set finalfcstoutput2;
+	format Volume 3.2;
+	if ForecastDate le intnx('day',today(),-1) then adj = .;
+	if adj = . then adj = 1;
+	Volume = adj * Volume;
+	drop adj;
+run;
+
+proc export data= finalfcstoutput2 dbms= csv replace outfile= 'c:\out2.csv';run;
+
+/*data finalfcstoutput2;
+	set finalfcstoutput2;
+	Volume2 = Volume * adj;
+	put Volume2;
+run;*/
+
+
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/
+/***********************************************************************************/

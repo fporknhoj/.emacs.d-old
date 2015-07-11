@@ -1,0 +1,159 @@
+require(RODBC)
+require(data.table)
+
+db_tps <- odbcConnect('IBHUBG01', uid='HGKROPFJ', pwd='homedepot2')
+db_dw2 <- odbcDriverConnect('driver={SQL Server};server=HUBDWDB01;database=DW2;trusted_connection=true')
+
+txt_opportunities <- "
+	select * 
+	from tpsdta.oppophsql 
+	where cust_nbr not in (1494,39175,39174,39176,39177,39173)
+		and most_recent_date between current date - 1 year and current date 
+	order by most_recent_date 
+	"
+txt_customers <- "
+	select * from dbo.Customers
+	"
+
+dta_opportunities <- data.table(sqlQuery(db_tps,txt_opportunities,stringsAsFactors=FALSE))
+setnames(dta_opportunities, names(dta_opportunities),  tolower(names(dta_opportunities)))
+
+dta_customers <- data.table(sqlQuery(db_dw2,txt_customers,stringsAsFactors=FALSE))
+
+dta_opportunities$reporting_cust_nbr <- dta_customers$ReportingCustomerID[match(dta_opportunities$cust_nbr,dta_customers$CustomerID)]
+dta_opportunities[iml_price_volume_type=="monthly", iml_price_volume_type := iml_price_volume * 12]
+dta_opportunities[iml_price_volume_type=="weekly", iml_price_volume_type := iml_price_volume * 52]
+dta_opportunities[iml_price_volume_type=="weekly", iml_price_volume_type := iml_price_volume * 52]
+
+
+
+
+
+
+
+dta_opportunities$iml_price_volume <- sapply( dta_opportunities$iml_price_volume_type , switch,
+                                             monthly = 12*dta_opportunities$iml_price_volume
+                                             weekly = 52*dta_opportunities$iml_price_volume
+                                             
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+dta_reoCustNbr <- dta_customers[,.(CustomerID,ReportingCustomerID)]
+setkey(dta_reoCustNbr, CustomerID)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function update(p,q,x,y) {
+    sapply(ifelse(p==x,y<-q,y<-y))}
+
+b[b[,CUST_NBR]==dta_customers[,CustomerID],REPORTING_CUST_NBR:=dta_customers[,ReportingCustomerID],by=REPORTING_CUST_NBR]
+
+b[CUST_NBR==dta_customers[,CustomerID]][,REPORTING_CUST_NBR := dta_customers[,ReportingCustomerID]]
+
+
+
+
+## setkey(dta_opportunities, CUST_NBR)
+## setkey(dta_customers, CustomerID)
+
+## #update customer number 
+## a <- dta_opportunities[dta_customers,mult="first"]
+## a <- dta_customers[dta_opportunities,mult="first"]
+
+## b <- dta_opportunities
+## ## setkey(b,CUST_NBR)
+## ## b[dta_customers, isin :=TRUE]
+## ## nrow(b)
+
+
+
+## b[b[,CUST_NBR]==dta_opportunities[,CUST_NBR] & b[,REPORTING_CUST_NBR]!=dta_opportunities[REPORTING_CUST_NBR],by=REPORTING_CUST_NBR]
+
+## ## b[CUST_NBR == dta_customers[,CustomerID], REPORTING_CUST_NBR := dta_customers[,ReportingCustomerID] ] 
+
+## for ( q in 1:ncol(b) ) {
+##     index = which(b[CUST_NBR]==dta_customers[CustomerID])
+
+## nrow(b)
+
+## for (i in 1:nrow(b) {
+##     for j in 1:nrow(dta_customers) {
+##         set(b, CUST_NBR==CustomerID, CUST_NBR, value = CustomerID
+
+
+
+## dta_opportunities[,REPORTING_CUST_NBR:=dta_customers[,ReportingCustomerID], by=CUST_NBR]
+## View(dta_opportunities)
+
+## dta_opportunities[CUST_NBR==dta_customers[,CustomerID],
+## 	REPORTING_CUST_NBR:=dta_customers[,ReportingCustomerID]]
+
+## dta_opportunities[CUST_NBR==dta_customers[,CustomerID],
+## 	REPORTING_CUST_NAME:=dta_customers[,ReportingCustomerName]]
+
+## table(dta_opportunities[CUST_NBR])
+
+## str(dta_opportunities)
+
+
+## dta_customers[is.na(CustomerID)]

@@ -1,0 +1,29 @@
+Attribute VB_Name = "access_create_linked_table_subroutine"
+Option Compare Database
+
+Sub linkTables(acnm As String, dbst As String, dbnm As String)
+    Dim db As Database
+    Set db = CurrentDb
+    Set tdef = db.CreateTableDef(acnm)
+    tdef.Connect = "ODBC;Driver={SQL Server};Server=HUBDWDB01;Database=" & dbst & ";trusted_connection=TRUE"
+    tdef.SourceTableName = dbnm
+    db.TableDefs.Append tdef
+End Sub
+
+Sub linkTablesAS400(acnm As String, dbst As String, dbnm As String)
+    Dim db As Database
+    Set db = CurrentDb
+    Set tdef = db.CreateTableDef(acnm)
+    tdef.Connect = "ODBC;DSN=IBHUBG01;UID=HGKROPFJ;PWD=homedepot2"
+    tdef.SourceTableName = dbnm
+    db.TableDefs.Append tdef
+End Sub
+
+
+Sub dothis()
+
+linkTables "dbo_dimCityStateAll", "dw2_static", "dbo.dimCityStateAll"
+
+End Sub
+
+

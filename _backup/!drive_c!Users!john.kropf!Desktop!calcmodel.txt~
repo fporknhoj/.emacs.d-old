@@ -1,0 +1,54 @@
+Updates to previous
+ _ computed repo classification:
+   _ if market is less than 50 loads/yr and majority of repos are in, repo in
+   _ if market is less than 50 loads/yr and majority of repos are out, repo out
+   _ if market is greater than 50 loads/yr and 5
+
+
+
+
+
+
+
+
+
+=
+IF(I2>50,
+  IF(O2<-0.05,"OB",
+    IF(O2>0.05,"IB","NA")),
+  IF(N2<-2,"OB",
+    IF(N2>2,"IB","NA")))
+
+
+As discussed previously:
+
+   market that is more than 1/wk, if 5% of loads
+   in/out require a repo, classified as a repo market in that
+   direction
+
+      costs of repo determined from Brendan's file of likely repo
+      costs, this column is marked average, b/c it averages repos
+      from all origins in and all destinations out. These are not
+      volume weighted, but they could be.
+
+            rationale at the time was that repo was next best
+            alternative, so the costs to fence the loser should take
+            most likely repo into account
+            
+    calc'd repo costs were applied based on o/d market classification
+
+    origin markets classified as IB repo markets were fenced with that
+    cost
+
+    dest markets classified as OB repo markets were fenced with that
+    cost
+
+    fence was applied to both the loser that had the 3 leg fence
+    applied and to the original calc'd value
+
+    Disagree column marks where they aren't the same
+
+ where to go from here?
+
+       
+    

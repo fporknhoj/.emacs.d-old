@@ -1,0 +1,2473 @@
+/* /\************** step 7 **********************\/ */
+
+
+/* *************************************************************************************************** */
+/*     This program builds four components of supply forecast: */
+/*     0)  This prototype approximates current supply because we don't have an event tying */
+/*     unload to next load. In production, we will know if a piece of equipment has been reassigned */
+/*     We look at the last event for each piece of equipment prior to "today". */
+/*     If the last event is an unload, within X days of today,we assume it is currently available */
+/*     (no loadings since then, probably still available) */
+/*     1) Currently moving loads (based on snapshot of "today" moving) */
+/*     ETA on transit + turn time = supply forecast */
+/*     and EBT projections. */
+/*     2) Forecasted moving loads in major lanes(based on same "today", from Dfcst module */
+/*     Demand forecast + Transit + Turn  =supply forecast */
+/*     3) Generated supply forecast from minor locations aggregated (ZZOTHORIG) */
+/*     Created supply forecast from origin ramp markets NOT in demand forecast groups */
+/*     -- all small origins with no OD's in fcstod file */
+/*     This forecast is statistical in nature, similar to the demand forecast. */
+/*     4) Supply forecast from major locations that are minor flows (ZZOTHER Destinations) */
+/*     (Prototype: CHorigins aggregated into ZZOTHER) */
+/*     (3 and 4 are combined into a single procedure:  find all destination ramp markets flows */
+/*     that are not forecasted from any demand origin. */
+/*     We will treat ZZOTH flows just like those that were never forecasted from demand locations) */
+
+
+/*     All ramp market destinations are included. */
+
+
+/*     Summary of Current Movers supply forecast methodology: */
+/*     STATUS:  SUPPLY  FCST  LAUNCH  DATE  SUPPLY DATE */
+/*     0)      CU                              Today                                   Today */
+/*     1)      AR                              NotifyDt                                NotifyDt+Predicted Turn Time */
+/*     NT                              NotifyDt                                NotifyDt+Predicted Turn Time */
+/*     ET                              ETADate                                 ETADate+Predicted Turn Time */
+/*     LD                              Loaddt                                  Loaddt + predicted tranit + pred turn */
+/*     OD                              OrdDt                                   orddt + predicted tranit + pred turn */
+/*     2)  Fcsted                              Fcstdt                                  Fcstdt + predicted tranit + pred turn */
+
+
+/*     *\/ */
+
+
+/* *0)  Approximates current supply because we don't have an event tying */
+/*     unload to next load. */
+/*     We look at the last event for each piece of equipment prior to "today". */
+/*     If the last event is an unload, within X days of today,we assume it is currently available */
+/*     (no loadings since then, probably still available); */
+
+
+***************************************************************************************************;
+** JK Table Setup;
+***************************************************************************************************;
+/*
+proc sql;
+    connect to odbc as dwpa (datasrc="DW_PA");
+    create table hublib.outnetworkequipment as select * from connection to dwpa (select * from outmarketequip);
+quit;
+
+
+proc sql;
+    connect to odbc as dw2 (datasrc="DW2");
+    create table hublib.transitmedian as select * from connection to dw2
+        (select      left(originrampsubmarket,5) as fcstorig
+        ,left(destinationrampsubmarket,5) as fcstdest
+        ,count(distinct loadnumber) as count
+        ,sum(datediff(minute,railingatedate,notifydate))/1440.0 / count(distinct loadnumber) as loadtonotify50
+        from        dw2.dbo.operationalsummary
+        where       transportationmode='iml'
+        and         equipmentcategory in('domestic','trailers')
+        and         loadnumber is not null
+        and         railingatedate<notifydate
+        and         originrampsubmarket<>''
+        and         destinationrampsubmarket<>''
+        and         convert(datetime,convert(char(8),notifydate,112))>=dateadd(day,-60,convert(datetime,convert(char(8),current_timestamp,112)))
+        group by    originrampsubmarket, destinationrampsubmarket
+        having      count(distinct loadnumber)>0
+        order by    count(distinct loadnumber) desc);
+quit;
+
+
+proc sort data=hublib.transitmedian;
+    by fcstorig fcstdest;
+run;
+*/
+/*
+proc sql;
+    connect to odbc as dw2 (datasrc="DW2");
+    create table hublib.turntimedowdist as select * from connection to dw2
+        ( select DestinationRampSubMarket as fcstdest
+        ,datepart(WEEKDAY,NotifyDate) as notifydow
+        ,avg(cast(CompletedUnloadingDate - NotifyDate as float)) as turntime
+        from dw2.dbo.OperationalSummary
+        where DsrDate > DATEADD(year,-1,current_timestamp)
+        and TransportationMode in ('IML')
+        and DestinationRampSubMarket <> ''
+        and transportationsubmode=''
+        and orderstatus in ('DSP','RBL','DLV')
+        and EquipmentCategory <> 'ISO'
+        group by DestinationRampSubMarket ,NotifyDate ,DSRDateDayOfTheWeekName
+        order by DestinationRampSubMarket ,DSRDateDayOfTheWeekName );
+quit;
+*/
+/*
+proc sql;
+    connect to odbc as dw2 (datasrc="DW2");
+    create table hublib.turntimedowdist as select * from connection to dw2
+        ( select fcstdest
+        ,notifydow
+        ,AVG(turntime) as turntime
+        from (
+        select DestinationRampSubMarket as fcstdest
+        ,datepart(WEEKDAY,NotifyDate) as notifydowvim
+        ,avg(cast(CompletedUnloadingDate - NotifyDate as float)) as turntime
+        from dw2.dbo.OperationalSummary
+        where DsrDate > DATEADD(year,-1,current_timestamp)
+        and TransportationMode in ('IML')
+        and DestinationRampSubMarket <> ''
+        and transportationsubmode=''
+        and orderstatus in ('DSP','RBL','DLV')
+        and EquipmentCategory <> 'ISO'
+        group by DestinationRampSubMarket ,NotifyDate ,DSRDateDayOfTheWeekName
+        ) tbl2
+        where notifydow is not null
+        group by fcstdest,notifydow
+        order by fcstdest,notifydow );
+quit;
+*/
+/* ****************************************************************************************** */
+/*     Resume Gorman ************************************************************************ */
+/* ******************************************************************************************; */
+%include 'c:\sasmodel\v2\4.1_fcst_turntime.sas';
+
+
+data work.alldataplusrepo;
+    set hublib.repo hublib.alldataplus;
+run;
+
+
+proc sort data=work.alldataplusrepo;
+    by EqId loaddt;
+run;
+
+
+data currentsupply;
+    set work.alldataplusrepo;
+    by eqid loaddt;
+    if last.eqid;
+    if (datepart(CompdUnldingDt) >= &today - &fcstoffset - &cursupdays and datepart(CompdUnldingDt) < &today)
+        or (datepart(CompdUnldingDt) >= &today - &fcstoffset - &fltsupdays and datepart(CompdUnldingDt) < &today
+        and (eqprov = "HUBU" or eqprov = "HUNU" or eqprov = "UPHU")  )
+        or (datepart(lastdt) >= &today - &fcstoffset - &fltsupdays and datepart(lastdt) < &today
+        and (tranmode = "RPO")  ) ;
+    if LastDtdef = "CU" or (lastdtdef = "NT" and tranmode = "RPO");
+    if FleetAvailFlag = "Y";
+    format unloaddt date9.;
+    Unloaddt = datepart(CompdUnldingDt);
+    if tranmode = "RPO" then unloaddt = datepart(notifydt);
+    format supplydt date9.;
+    supplydt = &today - &fcstoffset ;
+    if unloaddt = . then unloaddt = supplydt;
+run;
+
+
+data lastonerepo;
+    set work.currentsupply;
+    if tranmode = "RPO";
+run;
+
+
+* data;set lastonerepo;
+* proc sort nodupkey;
+* by fcstdt;
+* proc print;
+* var fcstdt;
+* run;
+
+proc sort data=currentsupply;
+    by  fcstdest;
+proc means data=currentsupply noprint;
+    by fcstdest;
+    var loads;
+    output out = todaysupplynetwork;
+run;
+
+
+******************************
+create outneworkequipment file
+******************************;
+
+libname dwpa odbc datasrc="dw_pa" schema=dbo;
+data hublib.outnetworkequipment;
+    set dwpa.outmarketequip;
+run;
+
+* proc sql;
+* connect to odbc as dwpa (datasrc="DW_PA");
+* create table hublib.outnetworkequipment as
+* select * from connection to dwpa
+* (select * from outmarketequip);
+* quit;
+
+
+proc means data=hublib.outnetworkequipment noprint;
+    by fcstdest;
+    var outbox;
+    output out= outnetworkequipmentsum sum= outsup;
+run;
+
+
+data todaysupplynetwork;
+    set todaysupplynetwork;
+    by fcstdest ;
+    if _stat_ = "N";
+    format supplydt date9.;
+    supplydt = &today - &fcstoffset ;
+    cursup = loads;
+    keep fcstdest supplydt cursup ;
+proc means data=todaysupplynetwork sum; title "cursup aggregate grand total";
+    var cursup;
+run;
+
+proc sort data=currentsupply;
+    by fcstdt;
+proc means data=currentsupply sum;
+    by fcstdt;
+    var loads;
+run;
+
+
+proc sort data=todaysupplynetwork;
+    by fcstdest;
+
+
+proc sort data=outnetworkequipmentsum;
+    by fcstdest;
+
+
+data todaysupplyall;
+    merge todaysupplynetwork outnetworkequipmentsum;
+    by fcstdest;
+
+
+data todaysupplyall;
+    set todaysupplyall;
+    if cursup ~= .;
+
+
+data todaysupply;
+    set todaysupplyall;
+    if cursup = . then cursup = 0;
+    if outsup = . then outsup = 0;
+    cursup = cursup + outsup;
+
+
+proc print data=todaysupply; title "today supply";
+run;
+
+
+proc freq data=work.currentsupply noprint; title "current supply fleetmove by dest distribution";
+    tables fcstdest*fleetmove / out = currentsupplyfleet ;
+run;
+
+
+data currentsupplyfleetonly;
+    set currentsupplyfleet;
+    if fleetmove=1;
+    csfleetcnt = count;
+run;
+
+
+data currentsupplynonfleetonly;
+    set currentsupplyfleet;
+    if fleetmove=0;
+    csnonfleetcnt = count;
+run;
+
+
+data hublib.currentsupplymix;
+    merge currentsupplyfleetonly currentsupplynonfleetonly;
+    by fcstdest;
+    if csfleetcnt = . then csfleetcnt = 0;
+    if csnonfleetcnt = . then csnonfleetcnt = 0;
+    csfleetpct = csfleetcnt/(csfleetcnt + csnonfleetcnt);
+    csnonfleetpct = csnonfleetcnt/(csfleetcnt + csnonfleetcnt);
+    format supplydt date9.;
+    supplydt = &today - &fcstoffset ;
+    drop count percent fleetmove;
+run;
+
+
+
+/* **************************************************************************** */
+/* ignore above, inventory for today we dont care about */
+/* ****************************************************************************; */
+
+
+*1) Currently moving loads (based on snapshot of "today"
+ETA on transit + turn time = supply forecast;
+* This will be based on the daily snapshot from Jason in production;
+
+
+data currenttransit;
+    set work.alldataplusrepo;
+/* * no longer include OD as current movers; */
+/* * OFD moves are forecast as DSR moves in the future; */
+/* * or LastDtdef = "OD"; */
+    if LastDtdef = "LD"   ;
+/* * data twinkle - don't check avail if in transit or moving; */
+/* * if FleetAvailFlag = "Y" ; */
+    if datepart(lastdt) >= &today - &fcstoffset - &transupdays;
+    if tranmode ne 'RPO';
+run;
+
+
+proc sort data=work.currenttransit;
+    by fcstorig fcstdest;
+
+
+data currenttransit2;
+    merge currenttransit hublib.transitmedian ;
+    by fcstorig fcstdest;
+    if LastDtdef = "LD";
+    if loadtonotify50 = . then loadtonotify50=6;
+    projnotifydt = lastdt + loadtonotify50*60*60*24 ;
+    lastevdate = datepart(lastdt);
+    if lastevdate >= &today - &fcstoffset - &transupdays;
+run;
+
+
+proc means data=currenttransit2 sum ;
+    var loads;
+run;
+
+
+data currenttransitrepo;
+    set currenttransit;
+    if tranmode = "RPO";
+
+
+data currentturners;
+    set work.alldataplusrepo;
+/* *if  datepart(LoadDt) <= &today and  datepart(CompdUnldingDt) >= &today ; */
+/* * last event is NOT an unload (still moving); */
+/* * very recent RC move, or fleet move, which we keep a lot longer; */
+    if LastDtdef = "ET" or LastDtdef = "AR" or
+        (lastdtdef = "NT" and tranmode ~= "RPO");
+    if (datepart(lastdt) >= &today - &fcstoffset - &turnsupdays )
+        or ( (datepart(lastdt) >= &today - &fcstoffset - &turnsupdays )
+        and (eqprov = "HUBU" or eqprov = "HUNU" or eqprov = "UPHU")  ) ;
+/* *and datepart(lastdt) < &today; */
+/* * old code - gone in 4e - used to make sure last dt was in past. Necessary?; */
+/* * I think this fixes a near-term supply shortage - not sure ; */
+    lastevdate = datepart(lastdt);  *essentially, notifytdt;
+    if LastDtdef = "AR" then lastevdate = datepart(NotifyDt);
+    projnotifydt = lastdt;
+    if LastDtdef = "AR" then projnotifydt = NotifyDt;
+/* * data twinkle - don't check avail if in transit or moving */
+/* if FleetAvailFlag = "Y"; */
+    if tranmode ne 'RPO';
+run;
+
+
+data currentturnersrepo;
+    set currentturners;
+    if tranmode = "RPO";
+run;
+
+
+proc means data=currentturners sum ;
+    var loads;
+run;
+
+
+data curbadorders;
+    set work.alldataplusrepo;
+    by eqid loaddt;
+    format unloaddt date9.;
+    if last.eqid;
+    if LastDtdef = "CU";
+    if FleetAvailFlag = "N";
+    unloaddt = datepart(CompdUnldingDt);
+    if (datepart(CompdUnldingDt) >= &today - &fcstoffset - &cursupdays and datepart(CompdUnldingDt) < &today) 
+        or (datepart(CompdUnldingDt) >= &today - &fcstoffset - &fltsupdays and datepart(CompdUnldingDt) < &today
+        and (eqprov = "HUBU" or eqprov = "HUNU" or eqprov = "UPHU")  ) ;
+
+    keep eqid loaddt unloaddt lastdtdef fleetavailflag CompdUnldingDt;
+run;
+
+
+/* exactly like curtrans, but chekc fleet avail = N*/
+/*
+
+
+CURRENTLY - BADORDERFLAG NOT CHECKED FOR LOADS IN TRANSIT; THESE ARE ASSUMED TO BE IN SUPPLY
+
+
+data badordderintrans;
+set hublib.alldataplus;
+format lastrepdt date9.;
+if LastDtdef = "LD"   ;
+if FleetAvailFlag = "N";
+lastrepdt = datepart(lastdt);
+if datepart(lastdt) >= &today - &fcstoffset - &turnsupdays;
+keep eqid loaddt lastdtdef fleetavailableflag lastdt lastrepdt;
+run;
+
+
+data currentturnersBO;
+    set hublib.alldataplus;
+    format lastevdate date9.;
+    if LastDtdef = "ET" or  LastDtdef = "NT" or LastDtdef = "AR";
+
+
+    if (datepart(lastdt) >= &today - &fcstoffset - &turnsupdays)
+        or
+        ( (datepart(lastdt) >= &today - &fcstoffset - &turnsupdays )
+        and (eqprov = "HUBU" or eqprov = "HUNU" or eqprov = "UPHU")  ) ;
+
+
+    lastevdate = datepart(lastdt);  *essentially, notifytdt;
+    if LastDtdef = "AR" then lastevdate = datepart(NotifyDt);
+
+
+    projnotifydt = lastdt;
+    if LastDtdef = "AR" then projnotifydt = NotifyDt;
+    if FleetAvailableFlag = "N";
+    keep eqid loaddt lastevdate fleetavailableflag lastdtdef projnotifydt;
+
+
+run;
+*/
+
+
+data currentmovers;
+    set currentturners currenttransit2;
+    format notifyday date9.;
+    format projnotifyday date9.;
+    Notifyday  = datepart(projnotifydt);
+/* *if notifyday < &today-2 then notifyday = &today -2; */
+    notifydow = weekday(Notifyday);
+    projnotifyday = datepart(projnotifydt);
+    if projnotifyday < &today-2 then projnotifyday = &today -2;
+/* * will key off of lastdt for projected turns!!!; */
+/* *keep fcstorig fcstdest origrampmkt destrampmkt destcompname notifyday notifydow */
+/* orddt loaddt ArrPickuplocDt   notifydt ArrDellocDt CompdUnldingDt */
+/* lastdtdef loads loadtonotify50 lastevdate; */
+run;
+
+
+/* *proc print data=currentmovers (obs=2000); */
+/* *run; */
+/* *proc freq data=currentmovers ; */
+/* *  tables lastdtdef tranmode; */
+/* run; */
+
+
+proc sort data=currentmovers;
+    by fcstdest notifydow destcompname ;
+RUN;
+
+
+proc sql;
+    create table getdowturn as
+        select *
+        from currentmovers  A,
+        hublib.turntimedowdist  B
+        where A.fcstdest = B.fcstdest
+        and a.notifydow = b.notifydow;
+quit;
+
+
+data currentmoversturn;
+    set getdowturn;
+    format supplydt date9.;
+    format supplydt2 date9.;
+    format notifyday date9.;
+    format projnotifyday date9.;
+    if tranmode = "RPO" then nottounloaddays = 0;
+    supplydt2 = datepart(projnotifydt +  nottounloaddays *60*60*24)  ;
+    supplydt = projnotifyday +  nottounloaddays   ;
+/* * hour = hour(projnotifydt + nottounloaddays *60*60*24)  ; */
+/* * if supply is overdue 12 hours, project it for today; */
+/* * if supply is overdue by more, assume it is gone; */
+/* * if supplydt = &today -1 and hour >= 12  then supplydt = &today; */
+/* * if supplydate is old, pretend like it became supply 2 days ago, and apply the turntime dist; */
+/* * if supplydt <  &today -1 or (supplydt = &today -1 and hour < 12) then      supplydt = &today - 2 + nottounloaddays; */
+/* *if still "old", then delete it; */
+    if supplydt <  &today then supplydt = .;
+    if supplydt ~=.;
+    Loads = Percent / 100;
+run;
+
+
+/* *proc print data = currentmoversturn ;*(obs=2000); title "check supplydt and projnotifyday"; */
+/* *  var  fcstdest eqprov projnotifydt projnotifyday supplydt nottounloaddays loads tranmode; */
+/* run; */
+
+
+proc sort data=currentmoversturn  ;
+    by fcstdest supplydt;
+
+
+proc means data= currentmoversturn noprint;
+    by fcstdest supplydt;
+    var loads;
+    output out=currentmoversupply sum =;
+proc means data=currentmoversupply   sum;
+    var loads;
+run;
+
+
+proc means data=currentmoversturn  sum;
+    var loads;
+run;
+
+
+data loadedsupplyfcst;
+    set currentmoversupply;
+    if supplydt <= &today - &fcstoffset + &fcsthoriz and supplydt >= &today- &fcstoffset ;
+    currentmovers = loads;
+    keep  fcstdest supplydt currentmovers loads;
+
+
+/* *proc print data=loadedsupplyfcst; */
+/* *var fcstdest supplydt loads CURRENTMOVERS; */
+/* *format supplydt date9.; */
+/* *run; */
+
+
+proc means data=loadedsupplyfcst sum ;
+    var CURRENTMOVERS;
+run;
+
+
+/* for supply by fleet  -  NAV and LAO */
+proc sort data=currentmoversturn  ;
+    by fcstdest supplydt fleetmove;
+
+
+proc means data=currentmoversturn  noprint;
+    by fcstdest supplydt fleetmove;
+    var loads;
+    output out=currentmoversfleet sum =;
+
+
+data currentmoversfleetonly;
+    set currentmoversfleet ;
+    if fleetmove=1;
+    cmfleetcnt = loads;
+run;
+
+
+data currentmoversnonfleetonly;
+    set currentmoversfleet ;
+    if fleetmove=0;
+    cmnonfleetcnt = loads;
+run;
+
+
+data hublib.currentmoversmix;
+    merge currentmoversfleetonly currentmoversnonfleetonly;
+    by fcstdest supplydt;
+    if cmfleetcnt = . then cmfleetcnt = 0;
+    if cmnonfleetcnt = . then cmnonfleetcnt = 0;
+    cmfleetpct = cmfleetcnt/(cmfleetcnt + cmnonfleetcnt);
+    cmnonfleetpct = cmnonfleetcnt/(cmfleetcnt + cmnonfleetcnt);
+    drop fleetmove;
+run;
+
+
+*proc print data=hublib.currentmoversmix ;
+*run;
+
+
+/******************************************/
+/* April 3: one more time -- current movers by eqprove */
+/* all known equipment included in forecast */
+
+
+proc means data=currentsupply sum; title "sum of current supply boxes";
+    var loads ;
+run;
+
+
+proc sort data=currentsupply ;
+    by fcstdest supplydt eqprov;
+*GDG001c begin;
+proc means data=currentsupply noprint;
+    by fcstdest supplydt eqprov;
+    var loads;
+    output out = todayboxnetwork;
+
+
+data todayboxnetwork;
+    set todayboxnetwork;
+    curbox = loads;
+    if _stat_ = "N";
+    format supplydt date9.;
+    supplydt = &today - &fcstoffset ;
+    keep fcstdest supplydt eqprov curbox;
+proc means data=todayboxnetwork sum; title "todaybox";
+    var CURBOX;
+run;
+
+
+proc sort data=todayboxnetwork;
+    by fcstdest eqprov;
+proc sort data=hublib.outnetworkequipment;
+    by fcstdest eqprov;
+data todaybox;
+    merge todayboxnetwork hublib.outnetworkequipment;
+    by fcstdest eqprov;
+    if curbox = . then curbox = 0;
+    if outbox = . then outbox = 0;
+*GDG001c end;
+proc means data=todaybox sum; title "sum of current moving boxes";
+    var curbox outbox;
+run;
+
+
+proc means data=currentmoversturn sum; title "sum of current moving boxes";
+    var loads ;
+run;
+
+
+proc sort data=currentmoversturn  ;
+    by fcstdest supplydt eqprov;
+
+
+proc means data=currentmoversturn  noprint;
+    by fcstdest supplydt eqprov;
+    var loads;
+    output out=currentmoversupplybox sum =;
+*proc freq data=currentmoversupplybox;
+*tables supplydt;
+run;
+
+
+*proc means data=currentmoversupplybox sum;
+*  var loads;
+run;
+
+
+proc sort data=currentmoversturn  ;
+    by fcstdest supplydt eqprov;
+proc sort data=todaybox;
+    by fcstdest supplydt eqprov;
+
+
+*GDG001d begin;
+data knownbox;
+    merge todaybox currentmoversupplybox ;
+    by  fcstdest supplydt eqprov;
+    if curbox = . then curbox = 0;
+    if outbox = . then outbox = 0;
+    if loads = . then movingbox = 0; else movingbox = loads;
+    if supplydt <= &today - &fcstoffset + &fcsthoriz and supplydt >= &today- &fcstoffset ;
+    if supplydt ~=.;
+    curbox = curbox + outbox;
+    boxcount = curbox + movingbox;
+    drop loads;
+proc means data=knownbox sum; title "moving, current and total boxes";
+    var boxcount curbox movingbox;
+run;
+
+
+proc means data=knownbox noprint;
+    by fcstdest supplydt eqprov;
+    var boxcount curbox outbox movingbox;
+    output out=hublib.currentandloadedsupeq sum =;
+*GDG001d end;
+*proc means data = hublib.currentandloadedsupeq  sum; title "total supply by box type hublib.currentandloadedseq";
+* var boxcount curbox movingbox;
+run;
+
+
+/***************************************************/
+* Step 2: supply based on large market demand forecasts *
+* 2) Forecasted moving loads in major lanes(based on same "today", from Dfcst module
+*   Demand forecast + Transit + Turn  =supply forecast  ;
+*   create supply forecast for Major lanes -- specific destinations (not zzoth);
+* this is major OD to MAJOR dest (not ZZOTHER);
+
+
+data dmndfcstsplfcst;
+    set HUBLIB.majordemandfcst;
+    if fcstdest ~= "ZZOTH";
+    if fcstdt >= &today- &fcstoffset ;
+RUN;
+
+
+proc sort data=dmndfcstsplfcst;
+    by fcstdest fcstorig fcstdt ;
+*proc means data=dmndfcstsplfcst  sum;
+*  var fcst;
+*run;
+
+
+Proc sort  data=hublib.transitmedian;
+    by    fcstdest fcstorig ;
+Proc sort  data=hublib.dowturntime;
+    by  fcstdest notifydow ;
+Proc sort  data=hublib.destturntime;
+    by  fcstdest ;
+
+
+data gettransittimes;
+    merge dmndfcstsplfcst hublib.transitmedian;
+    by  fcstdest fcstorig ;
+    if fcstdt ~= .;
+    majmkt = fcst;
+    notifyday = fcstdt + loadtonotify50;
+    notifydow = weekday(Notifyday);
+
+
+proc sort data=gettransittimes;
+    by fcstdest notifydow;
+run;
+
+
+* REvised MAJOR FORECST mover turn;
+* based on distribution;
+
+
+proc sql;
+    create table getturntimes as
+        select *
+        from gettransittimes A,
+        hublib.turntimedowdist  B
+        where A.fcstdest = B.fcstdest
+        and a.notifydow = b.notifydow;
+quit;
+
+
+proc sort data=getturntimes;
+    by fcstorig fcstdest FCSTDT;
+
+
+*proc print data=getturntimes  (obs=200);
+* var FCSTDT fcstorig fcstdest notifydow dowturntime nottounloaddays notifyday PERCENT fcst;
+run;
+
+
+proc sort data=getturntimes;
+    by fcstdest notifydow;
+
+
+data getturntimes2;
+    set getturntimes;
+    format supplydt date9.;
+    by fcstdest notifydow;
+    supplydt = fcstdt + int(loadtonotify50 + nottounloaddays) ;
+    loads = FCST*percent / 100;
+run;
+
+
+*proc print data=getturntimes2 (obs=200);
+*  var supplydt fcstdt nottounloaddays loadtonotify50;
+run;
+
+
+proc sort data=getturntimes2;
+    by fcstdest supplydt;
+
+
+proc means data=getturntimes2;
+    by fcstdest supplydt;
+    var loads;
+    output out=majorfcstsupply sum =;
+*proc means data=getturntimes2  sum;
+*  var loads;
+run;
+
+
+proc sort data=getturntimes2;
+    by  fcstorig fcstdest fcstdt;
+
+
+data majmktfcst;
+    set getturntimes2  ;
+    by  fcstorig fcstdest ;
+    majmkt = LOADS;
+
+
+/* Temporary for exporting detail */
+data majmktfcstexp;
+    set majmktfcst;
+    keep fcstdt Fcstorig fcstdest  fcst  loadtonotify50 supplydt MAJMKT nottounloaddays ;
+    IF FCSTORIG ~= "" AND FCSTDEST ~= "";
+
+
+proc sort data= majmktfcst ;
+    by fcstdest supplydt;
+
+
+proc means data=majmktfcst noprint;
+    by fcstdest supplydt;
+    var majmkt;
+    output out=majorflowsupplyfcstsum sum =;
+
+
+data majorflowsupplyfcstsum;
+    set majorflowsupplyfcstsum;
+    if supplydt => &today - &fcstoffset and supplydt <= &today - &fcstoffset + &fcsthoriz ;
+    eqprov = "FCST";
+run;
+
+
+
+/************************************************************
+    3) Generated supply forecast from minor locations aggregated (ZZOTHORIG)
+    Created supply forecast from origin ramp markets NOT in demand forecast groups
+    (prototype : non-CH origins;  Production: all small origins
+    This forecast is statistical in nature, similar to the demand forecast.
+    4) Supply forecast from major locations that are minor flows (ZZOTHER Destinations)
+    (Prototype: CHorigins aggregated into ZZOTHER)
+    (3 and 4 are combined into a single procedure:  find all destination ramp markets flows
+    that are not forecasted from any demand origin.
+    We will treat ZZOTH flows just like those that were never forecasted from demand locations)
+******************************************************************/
+
+
+/* for small market supply */
+/*
+
+
+9/15/07
+
+
+NOPNEW: now create   set hublib.minorodsupplydata  hublib.minororig;
+files for forecasting smallflow and small orig supply in the demand data partitioning stage;
+this is no longer necessary
+
+
+data smallrmpmktfcstmktgroups;
+set  hublib.rmpmktfcstmktgroups;
+if fcstdest = "ZZOTH";
+
+
+proc sort  data = smallrmpmktfcstmktgroups;
+    by origrampmkt destrampmkt ;
+*proc print;
+
+
+proc sort   data=hublib.alldataplus;
+    by origrampmkt destrampmkt ;
+    */
+*xxxxx;
+
+
+/* OTHERSUPPLY */
+
+
+data otherflows;
+    set hublib.minorodsupplydata  hublib.minororig;
+*  if majmktflag = 0 or majmktflag = -1; /* either not in demand forecast (-1), or small market (zzoth) forecast (0)*/
+if loads=1;
+run;
+
+
+
+proc sort   data=hublib.dowturntime;
+    by fcstdest notifydow;
+proc sort   data=hublib.transitmedian;
+    by fcstorig fcstdest ;
+proc sort   data=otherflows;
+    by fcstorig fcstdest ;
+
+
+data otherflows2;
+    merge hublib.transitmedian otherflows;
+    by  fcstorig fcstdest ;
+    if loads=1;
+    if fcstdt ~= .;
+    notifyday = fcstdt + loadtonotify50;
+    notifydow = weekday(Notifyday);
+
+
+proc sort data=otherflows2;
+    by fcstdest notifydow;
+run;
+
+
+data otherflows3;
+    merge otherflows2 hublib.dowturntime ;
+    by fcstdest notifydow;
+    format supplydt date9.;
+* SUPPLY date is based on notify, then do a distribution on turn time;
+    supplydt = fcstdt + loadtonotify50  ;
+    supplyday = datepart(supplydt);
+    format supplyday date9.;
+    demsuplead = int(supplydt - fcstdt);
+    if fcstdest ~="";
+
+
+data otherflows3;
+    set otherflows3;
+    if demsuplead <=0 then demsuplead = 1;
+
+
+data work.rawloads;
+    set work.otherflows3;
+    if fcstdt <= &today - &fcstoffset - 1 and fcstdt >= &today - &histrange ;
+run;
+
+
+data rawloads;
+    set rawloads;
+    dfcstorig = "ZZORIG";
+
+
+/* Fill in missing dates -- no obs implies zero loads for that date; */
+/* Also, make sure we have an entry for starthistory and end history,
+    so that when we fill in missing data, we fill in zeroes at beginning and end */
+
+
+proc sort data =work.rawloads;
+    by dfcstorig fcstdest demsuplead fcstdt;
+
+
+proc univariate data=rawloads noprint;
+    by dfcstorig fcstdest demsuplead fcstdt ;
+    var loads;
+    output out=work.rawloads2 n=count;
+run;
+
+
+data rawloadsbracket;
+    set rawloads2;
+    by dfcstorig fcstdest demsuplead fcstdt ;
+    if first.dfcstorig or first.fcstdest or first.demsuplead then
+        do
+        count = 0; fcstdt= &today - &histrange ; output;
+*put dfcstorig fcstdest  demsuplead fcstdt COUNT;
+        end;
+
+
+    if last.dfcstorig or last.fcstdest or last.demsuplead then
+        do
+        count = 0; fcstdt= &today - &fcstoffset  -1 ; output;
+        end;
+
+
+run;
+
+
+data work.rawloadsumfull;
+    merge rawloadsbracket rawloads2;
+    by dfcstorig fcstdest demsuplead fcstdt;
+
+
+proc sort data=rawloadsumfull;
+    by dFCSTORIG FCSTDEST demsuplead fcstdt;
+
+
+proc expand data=rawloadsumfull out=sumzero to=day method=none;
+    by dfcstorig fcstdest demsuplead ;
+    id fcstdt;
+run;
+
+
+/* save the final data set on which fcst was based */
+/* to a permanent SAS data set */
+
+
+proc expand data=sumzero out= fcstsummary method=none;
+    by dfcstorig fcstdest demsuplead;
+    id fcstdt;
+    convert count / transformout=(setmiss 0);
+run;
+
+
+data fcstsummary ;
+    set fcstsummary ;
+    label count ="loads";
+run;
+
+
+*proc print data = fcstsummary (obs=5000); Title "FULL DATES?";
+run;
+
+
+proc sort data = fcstsummary  ;
+    by fcstdest;
+
+
+proc means data = fcstsummary  sum n ; title "means of count after expand";
+    by fcstdest;
+    output out=sumloadcnt;
+    var count;
+run;
+
+
+proc sort data=fcstsummary ;
+    by fcstdest demsuplead ;
+
+
+data fcstsummary2;
+    set fcstsummary ;
+    by fcstdest demsuplead;
+    if first.demsuplead or first.fcstdest then
+        do   fcstdt = &today- &fcstoffset  to &today- &fcstoffset +&fcsthoriz ; holiday = .; desc=""; count=.; output; end;
+        else output;
+run;
+
+
+data fcstsummary3;
+    set fcstsummary2;
+    if fcstdest ~= "";
+    dow = weekday(fcstdt);
+    mon = month(fcstdt);
+    if dow= 1 then monday=1; else monday=0;
+    if dow= 2 then tuesday=1; else tuesday=0;
+    if dow= 3 then wednesday=1; else wednesday=0;
+    if dow= 4 then thursday=1; else thursday=0;
+    if dow= 5 then friday=1; else friday=0;
+    if dow= 6 then saturday=1; else saturday=0;
+    yesterday = lag(count);
+    if mon = 1 then jan=1; else jan=0;
+    if mon = 2 then feb=1; else feb=0;
+    if mon = 3 then mar=1; else mar=0;
+    if mon = 4 then apr=1; else apr=0;
+    if mon = 5 then may=1; else may=0;
+    if mon = 6 then jun=1; else jun=0;
+    if mon = 7 then jul=1; else jul=0;
+    if mon = 8 then aug=1; else aug=0;
+    if mon = 9 then sep=1; else sep=0;
+    if mon = 10 then oct=1; else oct=0;
+    if mon = 11 then nov=1; else nov=0;
+run;
+
+
+proc sort data=fcstsummary3 ;
+    by fcstdest demsuplead fcstdt ;
+
+
+proc autoreg data=fcstsummary3 outest=est ;
+    by fcstdest demsuplead ;
+    model count =
+        monday tuesday wednesday thursday friday saturday
+        jan feb mar apr may jun jul aug sep oct nov
+        / nlag=7 method=ml backstep ;
+    output out=SUPpred p=fcst pm=ytrend
+        lcl=lcl ucl=ucl;
+run;
+
+
+proc sort data=work.suppred;
+    by fcstdest demsuplead fcstdt ;
+
+
+data hublib.minorflowfcstact;
+    set work.suppred;
+    if fcstdt <&today - &fcstoffset ;
+    keep fcstdest fcstdt fcst count ;
+run;
+
+
+* MINMKT turn;
+* based on turn time distribution;
+
+
+data Minorflowfcst;
+    set work.suppred;
+    format NOTIFYdt date9.;
+    if fcstdt => &today - &fcstoffset and fcstdt <= &today - &fcstoffset + &fcsthoriz ;
+    notifydt = fcstdt + demsuplead;
+    notifydow = weekday(Notifydt);
+    keep fcstdt fcstdest demsuplead fcst notifydow  notifydt;
+
+
+proc means sum data=Minorflowfcst; TITLE "MEANS OF MINOR FORECAST - ALL RECORDS";
+    var fcst;
+run;
+
+
+proc sql;
+    create table minorgetturntimes as
+        select *
+        from Minorflowfcst A,
+        hublib.turntimedowdist  B
+        where A.fcstdest = B.fcstdest
+        and a.notifydow = b.notifydow;
+quit;
+
+
+proc sort data=minorgetturntimes;
+    by fcstdest FCSTDT;
+
+
+proc sort data=minorgetturntimes;
+    by fcstdest notifydow;
+
+
+data minorgetturntimes2;
+    set minorgetturntimes;
+    format supplydt date9.;
+    by fcstdest notifydow;
+    supplydt = notifydt + nottounloaddays ;
+    loads = FCST*percent / 100;
+run;
+
+
+proc sort data=minorgetturntimes2;
+    by fcstdest supplydt;
+
+
+proc means data=minorgetturntimes2 noprint;
+    by fcstdest supplydt;
+    var loads;
+    output out=minorfcstsupply sum =;
+
+
+proc sort data=minorgetturntimes2;
+    by   fcstdest fcstdt;
+
+
+data Minorflowsupplyfcst;
+    set minorgetturntimes2  ;
+    by  fcstdest ;
+    minormkt = LOADS;
+
+
+proc sort data=minorflowsupplyfcst;
+    by fcstdest supplydt;
+
+
+data hublib.minorflowfcstact;
+    set work.pred;
+    if fcstdt <&today - &fcstoffset ;
+    keep fcstorig fcstdest fcstdt fcst count ;
+run;
+
+
+data minorflowsupplyfcst2;
+    set minorflowsupplyfcst;
+    by fcstdest;
+    format supplydt date9.;
+    if first.fcstdest then
+        do supplydt = &today- &fcstoffset to &today- &fcstoffset + &fcsthoriz ;
+        output; end;
+        output;
+run;
+
+
+proc sort data=minorflowsupplyfcst2;
+    by fcstdest supplydt;
+
+
+proc means data=minorflowsupplyfcst2 noprint ;
+    by fcstdest supplydt;
+    var minormkt;
+    output out=minorflowsupplyfcstsum sum =;
+run;
+
+
+data minorflowsupplyfcstsum;
+    set minorflowsupplyfcstsum;
+    if supplydt => &today - &fcstoffset and supplydt <= &today - &fcstoffset + &fcsthoriz ;
+    eqprov = "FCST";
+run;
+
+
+proc means data=todaysupply sum ; title "1) today supply sum";
+    var cursup;
+run;
+
+
+proc means data=loadedsupplyfcst sum ; title "2) current movers sum";
+    var CURRENTMOVERS;
+run;
+
+
+proc means data=majorflowsupplyfcstsum sum ; title "3) current movers sum";
+    var MAJMKT;
+run;
+
+
+proc means data=minorflowsupplyfcstsum   sum ; title "4) minor mkt sum";
+    var minormkt;
+run;
+
+
+/***********************************************/
+/* put them all together! */
+*0;
+*proc print data=todaysupply; tITLE "CURRENT SUPPLY";
+*var fcstdest supplydt CURSUP;
+* format supplydt date9.;
+*1;
+*proc print data=loadedsupplyfcst; TITLE "CURRENTMOVERS";
+*var fcstdest supplydt loads CURRENTMOVERS ;
+run;
+*2;
+*proc print data=majorflowsupplyfcstsum (obs=2000);  title "supply fcst sum from MAJOR lanes by Dest";
+*  var fcstdest  supplydt MAJMKT ;
+*3 and 4;
+*proc print data=minorflowsupplyfcstsum ; title "supply forecast summary FOR MINOR OD'S";
+*format supplydt date9.;
+run;
+
+
+/************* Step 10 ***********************/
+
+
+proc sort data= todaysupply;
+    by fcstdest supplydt;
+proc sort data= loadedsupplyfcst ;
+    by fcstdest supplydt;
+proc sort data= majorflowsupplyfcstsum ;
+    by fcstdest supplydt;
+proc sort data= minorflowsupplyfcstsum ;
+    by fcstdest supplydt;
+*proc sort data= actualsupplysum ;
+*  by fcstdest supplydt;
+/* new code fills in missing supply dates*/
+
+
+data todaysuppdates;
+    set todaysupply ;
+    by fcstdest ;
+    if first.fcstdest then
+        do supplydt = &today- &fcstoffset +1  to &today- &fcstoffset + &fcsthoriz ;
+        cursup = 0 ; gotdate=1; output;
+        end;
+    output;
+run;
+
+
+data todaysuppdates;
+    set todaysupply todaysuppdates;
+run;
+
+
+proc sort data= todaysuppdates;
+    by fcstdest supplydt;
+
+
+*proc print data=todaysuppdates; title "complete supply dates";
+run;
+
+
+data hublib.supplyequipment ;
+    set  hublib.currentandloadedsupeq majorflowsupplyfcstsum minorflowsupplyfcstsum ;
+    format futdate Date9.;
+    if curbox = . then curbox = 0;
+    if movingbox = . then movingbox = 0;
+    if MAJMKT = . then MAJMKT = 0;
+    if MINORMKT = . then MINORMKT = 0;
+    boxcount = curbox + movingbox + MAJMKT + MINORMKT  ;
+    if fcstdest ~= "";
+    ramp = fcstdest;
+    futdate = supplydt;
+*mfg001;
+    dayoffcst = &today;
+    drop _type_;
+*  keep fcstdest supplydt fcstsupply CURSUP CURRENTMOVERS MAJMKT MINORMKT ;
+proc means data=hublib.supplyequipment sum;
+    var boxcount ;
+run;
+
+
+proc sort data= hublib.supplyequipment ;
+    by fcstdest supplydt eqprov;
+*proc print;
+run;
+
+
+
+data hublib.supplyfcstdetail;
+    merge todaysuppdates  loadedsupplyfcst majorflowsupplyfcstsum minorflowsupplyfcstsum ;
+    by fcstdest supplydt;
+    if cursup = . then cursup = 0;
+    if CURRENTMOVERS = . then CURRENTMOVERS = 0;
+    if MAJMKT = . then MAJMKT = 0;
+    if MINORMKT = . then MINORMKT = 0;
+    fcstsupply = CURSUP + CURRENTMOVERS + MAJMKT + MINORMKT;
+    fcstsupply2 = CURRENTMOVERS + MAJMKT + MINORMKT;
+    if fcstdest ~= "" and fcstdest ~= " ";
+    keep fcstdest supplydt fcstsupply fcstsupply2 CURSUP outsup CURRENTMOVERS MAJMKT MINORMKT ;
+run;
+
+
+/* supply forecast accuracy check: compare fcst to hist by destination
+    xxxx NOPProduction Supply forecast accuracy check */
+/* projected forecasted supply */
+data cuproj;
+    set hublib.supplyfcstdetail;
+    CUProj = CURRENTMOVERS + MAJMKT + MINORMKT  ;
+run;
+
+
+proc means data=cuproj noprint mean;
+    by fcstdest;
+    var cuproj;
+    output out=cufcstavg mean=;
+run;
+
+
+proc means data=cufcstavg sum;
+    var cuproj;
+run;
+
+
+/* historical supply */
+proc print data=hublib.alldataplusall (obs=1000);
+    var fcstdest CompdUnldingDt loads fleetavailflag;
+run;
+
+
+proc sort data=hublib.alldataplusall ;
+    by fcstdest CompdUnldingDt;
+
+
+data cuhist;
+    set hublib.alldataplusall ;
+    by fcstdest;
+    format unloaddt date9.;
+    unloaddt = datepart(CompdUnldingDt);
+    if (unloaddt) < &today and unloaddt ~= .;
+    if unloaddt >= &today - &histrange and
+        unloaddt <= &today - &fcstoffset -1 ;
+    keep unloaddt fleetavailflag loads fcstdest;
+run;
+
+
+proc means data=cuhist;
+    var unloaddt;
+    format unloaddt date9.;
+    output out=xxx;
+run;
+
+
+proc means data=cuhist noprint;
+    by fcstdest ;
+    var loads;
+    output out=cudailytot sum=;
+run;
+
+
+proc print data=cudailytot (obs=1000);
+run;
+
+
+data cudestavg ;
+    set cudailytot ;
+    drop _type_ _freq_;
+    cuhist = loads/&histrange;
+run;
+
+
+proc means data=cudestavg sum;
+    var cuhist;
+run;
+
+
+data supplyfcstcomp;
+    merge cufcstavg cudestavg ;
+    drop _type_ _freq_ loads;
+    by fcstdest;
+    if cuproj ~= . and cuhist ~= .;
+run;
+
+
+proc sort data=hublib.supplyfcstdetail;
+    by supplydt;
+
+
+/* for NAV and LAO:  do it again, capturing fleet/nonfleet*/
+
+
+proc freq data=hublib.alldataplus noprint; title "current supply fleetmove by dest distribution";
+    tables fcstdest*fleetmove / out = fcstsupplyfleet ;
+run;
+
+
+data fcstsupplyfleetonly;
+    set fcstsupplyfleet;
+    if fleetmove=1;
+    fcfleetcnt = count;
+run;
+
+
+data fcstsupplynonfleetonly;
+    set fcstsupplyfleet;
+    if fleetmove=0;
+    fcnonfleetcnt = count;
+run;
+
+
+data hublib.fcstsupplymix;
+    merge fcstsupplyfleetonly fcstsupplynonfleetonly;
+    by fcstdest;
+    if fcfleetcnt = . then fcfleetcnt = 0;
+    if fcnonfleetcnt = . then fcnonfleetcnt = 0;
+    fcfleetpct = fcfleetcnt/(fcfleetcnt + fcnonfleetcnt);
+    fcnonfleetpct = fcnonfleetcnt/(fcfleetcnt + fcnonfleetcnt);
+    drop count percent fleetmove;
+run;
+
+
+/* for NAV and LAO, merge detailed supply forecast with fleet/non fleet breakdowns
+    for all three forecast groups: CS, CM, FC  */
+
+
+proc sql;
+    create table GETFCSTPCT as
+        select A.fcstdest , A.supplydt , A.fcstsupply , A.CURSUP , A.CURRENTMOVERS , A.MAJMKT , A.MINORMKT ,
+        B.fcfleetcnt , B.fcnonfleetcnt , B.fcfleetpct , B.fcnonfleetpct
+        from hublib.supplyfcstdetail A,
+        hublib.fcstsupplymix B
+        where A.fcstdest = B.fcstdest;
+quit;
+
+
+proc sort data= getfcstpct;
+    by fcstdest supplydt;
+run;
+
+
+proc sort data= hublib.currentmoversmix ;
+    by fcstdest supplydt;
+run;
+
+
+proc sort data= hublib.currentsupplymix;
+    by fcstdest supplydt;
+run;
+
+
+data hublib.supplyfcstdetail;
+    merge getfcstpct hublib.currentmoversmix hublib.currentsupplymix;
+    by fcstdest supplydt;
+    if supplydt <= &today - &fcstoffset + &fcsthoriz;
+    if cmfleetcnt = . then cmfleetcnt = 0;
+    if cmnonfleetcnt = . then cmnonfleetcnt = 0;
+    if csfleetcnt = . then csfleetcnt = 0;
+    if csnonfleetcnt = . then csnonfleetcnt = 0;
+    keep  fcstdest supplydt fcstsupply CURSUP CURRENTMOVERS MAJMKT MINORMKT
+        fcfleetpct fcnonfleetpct csfleetcnt csnonfleetcnt cmfleetcnt cmnonfleetcnt;
+run;
+
+/* ***********************************************************************************************************************************************************************; */
+/* ***********************************************************************************************************************************************************************; */
+/* ***********************************************************************************************************************************************************************; */
+/* *********************************** ignore below here *****************************************************************************************************************; */
+/* ***********************************************************************************************************************************************************************; */
+/* ***********************************************************************************************************************************************************************; */
+/* ***********************************************************************************************************************************************************************; */
+
+/* /\************** STEP 10 **************************\/ */
+/* /\* put supply and demand together, and see how we */
+/*     look for surplusses and deficits *\/ */
+
+
+data hublib.supplyfcst;
+    set hublib.supplyfcstdetail;
+    format futdate date9.;
+    format dayoffcst date9.;
+    ramp = fcstdest;
+    futdate = supplydt;
+    supply = fcstsupply;
+    dayoffcst = &today - &fcstoffset  ;
+    if supplydt <= &today - &fcstoffset + &fcsthoriz;
+    keep dayoffcst ramp futdate supply ;
+
+
+run;
+
+
+data hublib.demandfcst;
+    set hublib.majorrampsummary hublib.otherdemandfcst;
+    format futdate date9.;
+    format dayoffcst date9.;
+    demand = fcst;
+    ramp = fcstorig;
+    futdate = fcstdt;
+    dayoffcst = &today - &fcstoffset  ;
+    keep ramp dayoffcst futdate demand;
+run;
+
+
+proc sort data=hublib.demandfcst;
+    by ramp futdate;
+proc sort data=hublib.supplyfcst;
+    by ramp futdate;
+
+
+data surpdef;
+    merge  hublib.demandfcst hublib.supplyfcst;
+    by ramp futdate;
+    if supply = . then supply = 0;
+    if demand = . then demand = 0;
+    predsurplus = supply - demand;
+    keep ramp futdate dayoffcst predsurplus supply demand ;
+run;
+
+
+proc means data = surpdef noprint ;
+    var demand supply predsurplus ;
+    by ramp;
+    output out=supdeffcstacc;
+run;
+
+
+data hublib.forecast;
+    set surpdef;
+run;
+
+
+proc print data=hublib.forecast (obs=200);
+run;
+
+
+proc sort data=hublib.forecast ;
+    by ramp ;
+proc means data=hublib.forecast ;
+    by ramp ;
+    var supply demand;
+    output out=forecastsum mean=;
+run;
+
+
+proc print data=hublib.forecast;
+run;
+
+
+proc sort data=hublib.forecast ;
+    by futdate ;
+proc means data=hublib.forecast sum;
+    by futdate;
+    var supply demand;
+    output out=forecasttots sum=;
+run;
+
+
+proc means data=forecasttots mean;
+    var supply demand;
+run;
+
+
+data forecastsum ;
+    set forecastsum ;
+run;
+
+
+/* for LRO and LAO, do it again by fleet and non-fleet */
+
+
+data hublib.supplyfcstfleet;
+    set hublib.supplyfcstdetail;
+    format futdate date9.;
+    format dayoffcst date9.;
+    ramp = fcstdest;
+    futdate = supplydt;
+    supply = fcstsupply;
+    dayoffcst = &today - &fcstoffset  ;
+    if supplydt <= &today - &fcstoffset + &fcsthoriz;
+    keep ramp futdate dayoffcst supply
+        CURSUP CURRENTMOVERS MAJMKT MINORMKT
+        fcfleetpct fcnonfleetpct csfleetcnt csnonfleetcnt cmfleetcnt cmnonfleetcnt;
+run;
+
+
+proc sort data=hublib.demandfcst;
+    by ramp futdate;
+proc sort data=hublib.supplyfcst;
+    by ramp futdate;
+
+
+data surpdeffleet;
+    merge  hublib.demandfcst hublib.supplyfcstfleet;
+    by ramp futdate;
+    if ramp ~= "";
+    if supply = . then supply = 0;
+    if demand = . then demand = 0;
+    predsurplus = supply - demand;
+    fcfleetcnt = (majmkt + minormkt) * fcfleetpct;
+    fcnonfleetcnt = (majmkt + minormkt) * fcnonfleetpct;
+    Fleetsup = fcfleetcnt + cmfleetcnt + csfleetcnt;
+    nonFleetsup = fcnonfleetcnt + cmnonfleetcnt + csnonfleetcnt;
+    keep ramp futdate dayoffcst predsurplus supply demand
+        CURSUP CURRENTMOVERS MAJMKT MINORMKT
+        fcfleetpct fcnonfleetpct csfleetcnt csnonfleetcnt cmfleetcnt cmnonfleetcnt
+        fleetsup nonfleetsup fcfleetcnt fcnonfleetcnt  ;
+run;
+
+
+data hublib.forecastfleet;
+    set surpdeffleet ;
+run;
+
+
+/****************** STEP 11 :  AA Auto Accept Forecast ******************/
+
+
+/*this is where we define the forecast groups: by fcstrampmkt  */
+/* only auto accept */
+/*only for a certain date range */
+
+
+data work.aa;
+    set hublib.minororig  hublib.majororig;
+    if autoaccept = 1;
+run;
+
+
+proc sort data=work.aa;
+    by  fcstorig fcstdt;
+
+
+/* count loads by date */
+proc means data = work.aa noprint;
+    by fcstorig fcstdt;
+    output out=work.sumaa;
+    var loads;
+run;
+
+
+data work.sum2aa;
+    set work.sumaa;
+    by fcstorig fcstdt;
+    if _stat_ = "N";
+    drop _freq_ _type_;
+
+
+/* count dates with loads */
+proc means data = work.sum2aa ; title "look at loads/day or total loads instead of n";
+    by fcstorig ;
+    output out=work.sum3aa;
+    var loads;
+run;
+
+
+data work.sum4aa;
+    set work.sum3aa;
+    by fcstorig ;
+    if _stat_ = "N";
+    loaddays = loads;
+    drop _freq_ _type_ loads;
+run;
+
+
+proc sort data = sum4aa;
+    by fcstorig ;
+run;
+
+
+/* Fill in missing dates -- no obs implies zero loads for that date; */
+/*forcast by group selection! */
+/* if XYZ volume, forecast it, otherwise, make it OTHER */
+
+
+data work.fcstdataaa;
+    merge work.aa sum4aa ;
+    by fcstorig ;
+    if loaddays~=.;
+
+
+/* preserve this data, including fcstramp market names */
+
+
+proc sort data = work.fcstdataaa;
+    by fcstorig fcstdt;
+
+
+proc univariate data=work.fcstdataaa noprint;
+    by fcstorig fcstdt;
+    var loads;
+    output out=work.sum2pt5aa n=count;
+run;
+
+
+proc expand data=work.sum2pt5aa out=sumzeroaa to=day method=none;
+    by fcstorig ;
+    id fcstdt;
+run;
+
+
+/* save the final data set on which fcst was based */
+/* to a permanent SAS data set */
+
+
+proc expand data=sumzeroaa out= work.fcstsummaryaa method=none;
+    by fcstorig ;
+    id fcstdt;
+    convert count / transformout=(setmiss 0);
+run;
+
+
+data work.fcstsummaryaa ;
+    set work.fcstsummaryaa ;
+    by fcstorig;
+    label count ="loads";
+    if first.fcstorig then
+        do fcstdt = &today - &fcstoffset  to &today- &fcstoffset + &fcsthoriz ; count=.; output; end;
+        else output;
+
+
+run;
+
+
+
+data hublib.fcstsummaryaa ;
+    set work.fcstsummaryaa  ;
+    by fcstorig ;
+    dow = weekday(fcstdt);
+    mon = month(fcstdt);
+    if first.fcstorig then
+        time = 1; else time+1;
+    if dow= 1 then monday=1; else monday=0;
+    if dow= 2 then tuesday=1; else tuesday=0;
+    if dow= 3 then wednesday=1; else wednesday=0;
+    if dow= 4 then thursday=1; else thursday=0;
+    if dow= 5 then friday=1; else friday=0;
+    if dow= 6 then saturday=1; else saturday=0;
+    yesterday = lag(count);
+    if mon = 1 then jan=1; else jan=0;
+    if mon = 2 then feb=1; else feb=0;
+    if mon = 3 then mar=1; else mar=0;
+    if mon = 4 then apr=1; else apr=0;
+    if mon = 5 then may=1; else may=0;
+    if mon = 6 then jun=1; else jun=0;
+    if mon = 7 then jul=1; else jul=0;
+    if mon = 8 then aug=1; else aug=0;
+    if mon = 9 then sep=1; else sep=0;
+    if mon = 10 then oct=1; else oct=0;
+    if mon = 11 then nov=1; else nov=0;
+    if fcstorig ~="" ;
+run;
+
+
+proc sort DATA=hublib.fcstsummaryaa ;
+    by fcstorig fcstdt ;
+
+
+proc autoreg data=hublib.fcstsummaryaa outest=estaa ;
+    by fcstorig ;
+    model count = time
+        monday tuesday wednesday thursday friday saturday
+        jan feb mar apr may jun jul aug sep oct nov
+        / nlag=7 method=ml backstep ;
+    output out=predaa p=fcstaa pm=ytrend
+        lcl=lcl ucl=ucl;
+run;
+
+
+proc sort DATA=hublib.fcstsummaryaa ;
+    by fcstorig fcstdt ;
+
+
+data work.predaafcst;
+    set work.predaa;
+    ME = count-fcstaa;
+    MAE = abs(ME);
+    keep fcstorig fcstdt count fcstaa ME MAE;
+
+
+proc sort data=work.predaafcst;
+    by fcstorig fcstdt;
+
+
+data hublib.aafcst;
+    set work.predaafcst;
+    format futdt date9.;
+    if fcstdt >= &today ;  *- &fcstoffset + &fcsthoriz;
+    futdt = fcstdt ;
+    fcstdt = &today;
+    AAloads  = fcstaa ;
+    keep fcstorig fcstdt futdt AAloads;
+
+
+
+/****************** STEP 12 :  HO HUBU Only Forecast ******************/
+
+
+/*this is where we define the forecast groups: by fcstrampmkt  */
+/* only auto accept */
+/*only for a certain date range */
+
+
+data work.HO;
+    set hublib.minororig  hublib.majororig;
+    if hubuonly = 1;
+run;
+
+
+proc sort data=work.HO;
+    by  fcstorig fcstdt;
+run;
+
+
+/* count loads by date */
+proc means data = work.HO noprint;
+    by fcstorig fcstdt;
+    output out=work.sumHO;
+    var loads;
+run;
+
+
+data work.sum2HO;
+    set work.sumHO;
+    by fcstorig fcstdt;
+    if _stat_ = "N";
+    drop _freq_ _type_;
+
+
+/* count dates with loads */
+proc means data = work.sum2HO ; title "look at loads/day or total loads instead of n";
+    by fcstorig ;
+    output out=work.sum3HO;
+    var loads;
+run;
+
+
+data work.sum4HO;
+    set work.sum3HO;
+    by fcstorig ;
+    if _stat_ = "N";
+    loaddays = loads;
+    drop _freq_ _type_ loads;
+run;
+
+
+proc sort data = sum4HO;
+    by fcstorig ;
+run;
+
+
+/* Fill in missing dates -- no obs implies zero loads for that date; */
+/*forcast by group selection! */
+/* if XYZ volume, forecast it, otherwise, make it OTHER */
+
+
+data work.fcstdatHOa;
+    merge work.HO sum4HO ;
+    by fcstorig ;
+    if loaddays~=.;
+
+
+proc sort data = work.fcstdatHOa;
+    by fcstorig fcstdt;
+
+
+proc univariate data=work.fcstdatHOa noprint;
+    by fcstorig fcstdt;
+    var loads;
+    output out=work.sum2pt5HO n=count;
+run;
+
+
+proc expand data=work.sum2pt5HO out=sumzeroHO to=day method=none;
+    by fcstorig ;
+    id fcstdt;
+run;
+
+
+/* save the final data set on which fcst was based */
+/* to a permanent SAS data set */
+
+
+proc expand data=sumzeroHO out= work.fcstsummaryHO method=none;
+    by fcstorig ;
+    id fcstdt;
+    convert count / transformout=(setmiss 0);
+run;
+
+
+data work.fcstsummaryHO ;
+    set work.fcstsummaryHO ;
+    by fcstorig;
+    label count ="loads";
+    if first.fcstorig then
+        do fcstdt = &today - &fcstoffset  to &today- &fcstoffset + &fcsthoriz ; count=.; output; end;
+        else output;
+
+
+run;
+
+
+data hublib.fcstsummaryHO ;
+    set work.fcstsummaryHO  ;
+    by fcstorig ;
+    dow = weekday(fcstdt);
+    mon = month(fcstdt);
+
+
+    if first.fcstorig then
+        time = 1; else time+1;
+    if dow= 1 then monday=1; else monday=0;
+    if dow= 2 then tuesday=1; else tuesday=0;
+    if dow= 3 then wednesday=1; else wednesday=0;
+    if dow= 4 then thursday=1; else thursday=0;
+    if dow= 5 then friday=1; else friday=0;
+    if dow= 6 then saturday=1; else saturday=0;
+
+
+    yesterday = lag(count);
+
+
+    if mon = 1 then jan=1; else jan=0;
+    if mon = 2 then feb=1; else feb=0;
+    if mon = 3 then mar=1; else mar=0;
+    if mon = 4 then apr=1; else apr=0;
+    if mon = 5 then may=1; else may=0;
+    if mon = 6 then jun=1; else jun=0;
+    if mon = 7 then jul=1; else jul=0;
+    if mon = 8 then aug=1; else aug=0;
+    if mon = 9 then sep=1; else sep=0;
+    if mon = 10 then oct=1; else oct=0;
+    if mon = 11 then nov=1; else nov=0;
+
+
+    if fcstorig ~="" ;
+run;
+
+
+proc sort DATA=hublib.fcstsummaryHO ;
+    by fcstorig fcstdt ;
+
+
+proc autoreg data=hublib.fcstsummaryHO outest=estHO ;
+    by fcstorig ;
+    model count = time
+        monday tuesday wednesday thursday friday saturday
+        jan feb mar apr may jun jul aug sep oct nov
+        / nlag=7 method=ml backstep ;
+    output out=predHO p=fcstHO pm=ytrend
+        lcl=lcl ucl=ucl;
+run;
+
+
+proc sort DATA=hublib.fcstsummaryHO ;
+    by fcstorig fcstdt ;
+
+
+data work.predHOfcst;
+    set work.predHO;
+    ME = count-fcstHO;
+    MAE = abs(ME);
+    keep fcstorig fcstdt count fcstHO ME MAE;
+
+
+proc sort data=work.predHOfcst;
+    by fcstorig fcstdt;
+
+
+data hublib.HOfcst;
+    set work.predHOfcst;
+    format futdt date9.;
+    if fcstdt >= &today ;  *- &fcstoffset + &fcsthoriz;
+    futdt = fcstdt ;
+    fcstdt = &today;
+    HOloads  = fcstHO ;
+    keep fcstorig fcstdt futdt HOloads;
+
+
+/******************** FINAL STEP:  Saving .CSV Files from all this good work ************/
+
+
+/* temp export detail */
+
+
+PROC EXPORT DATA= Minorflowsupplyfcst
+    OUTFILE= "c:\sasmodel\csvsout\\minor flows forecast detail.csv"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+/* Temporary for exporting detail
+PROC EXPORT DATA= majmktfcstexp
+    OUTFILE= "c:\sasmodel\csvsout\\major flows forecast detail.csv"
+    DBMS=CSV REPLACE;
+RUN;
+/* temp export detail
+PROC EXPORT DATA= HUBLIB.minorflowfcstact
+    OUTFILE= "c:\sasmodel\csvsout\\minor flows historical fcst and act detailv.csv"
+    DBMS=CSV REPLACE;
+RUN;
+*/
+*very big file - removed to save space;
+*GDG001e;
+
+
+data currentmoversgdg;
+    set currentmoversturn;
+    if eqprov in ("HUBU","UPHU");
+run;
+
+
+PROC EXPORT DATA= currentmoversgdg
+    OUTFILE= "c:\sasmodel\csvsout\currentloadrecords.CSV"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= HUBLIB.repo
+    OUTFILE= "c:\sasmodel\csvsout\repo.CSV"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= HUBLIB.supplyfcst
+    OUTFILE= "c:\sasmodel\csvsout\supplyforecast.CSV"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= currentsupply
+    OUTFILE= "c:\sasmodel\csvsout\currentsupplyrecords.CSV"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= HUBLIB.supplyfcstdetail
+    OUTFILE= "c:\sasmodel\csvsout\supplyforecastcomponents.CSV"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= HUBLIB.majordemandfcst
+    OUTFILE= "c:\sasmodel\csvsout\MAJORdemandforecast.CSV"
+    DBMS=CSV REPLACE;
+run;
+
+
+proc EXPORT DATA= HUBLIB.otherdemandfcst
+    OUTFILE= "c:\sasmodel\csvsout\otherdemandforecast.CSV"
+    DBMS=CSV REPLACE;
+run;
+
+
+proc EXPORT DATA= majfcstsum
+    OUTFILE= "c:\sasmodel\csvsout\majfcsteval.csv"
+    DBMS=CSV REPLACE;
+run;
+
+
+proc EXPORT DATA= minfcstactsum
+    OUTFILE= "c:\sasmodel\csvsout\minfcsteval.csv"
+    DBMS=CSV REPLACE;
+run;
+
+
+proc EXPORT DATA= fcstandhist
+    OUTFILE= "c:\sasmodel\csvsout\origrampDmdhistandfcstavg.csv"
+    DBMS=CSV REPLACE;
+run;
+
+
+proc EXPORT DATA= supplyfcstcomp
+    OUTFILE= "c:\sasmodel\csvsout\destrampSuphistandfcstavg.csv"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= HUBLIB.FORECAST
+    OUTFILE= "c:\sasmodel\csvsout\hublibforecast.csv"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= HUBLIB.FORECASTfleet
+    OUTFILE= "c:\sasmodel\csvsout\forecastfleet.csv"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= work.predaafcst
+    OUTFILE= "c:\sasmodel\csvsout\AAPREDICTIONEVALUATION.csv"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= HUBLIB.aafcst
+    OUTFILE= "c:\sasmodel\csvsout\AAforecast.csv"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= work.predHOfcst
+    OUTFILE= "c:\sasmodel\csvsout\HOPREDICTIONEVALUATION.csv"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= HUBLIB.HOfcst
+    OUTFILE= "c:\sasmodel\csvsout\HOforecast.csv"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= curbadorders
+    OUTFILE= "c:\sasmodel\csvsout\BOCursup.csv"
+    DBMS=CSV REPLACE;
+RUN;
+
+
+proc printto;
+run;
+
+
+/* end forecast program */
+
+
+/* fcstadjust added to end of forecast program */
+
+
+/* FCSTADJUST -
+    adds dfcstadjust and sfcstadjust to
+    hublib.forecast - by origin (both s and d) - Hublib.revforecast
+    hublib.majordemfcst & otherfcst - by origin and destination  - Hublib.revODforecast
+    and there may be others... such as
+    supply by origin and equipment adjustment.
+
+
+    Version modifcation description:
+    2b - fix eqprov truncation
+
+
+    NOPPRODUCTION - added to end of NOP FORECAST program .
+    All model parameters (macro variables) are set at beginning of forecast program only; not reset here.
+
+
+    */
+
+
+*filename outfile 'c:\sasmodel\NOPFcstadjust.txt';
+*filename logfile 'c:\sasmodel\NOPfcstadjust.log';
+*filename xlsfile 'c:\sasmodel\NOPfcstadjust.xls';
+*filename csvfile 'c:\sasmodel\NOPfcstadjust.csv';
+*proc printto log=logfile new;
+*run;
+*proc printto print=outfile new;
+*run;
+
+
+/* read in forecast adjustment files */
+/*from proc import*/
+
+
+data HUBLIB.DFCSTADJUST                          ;
+    %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+    infile 'd:\nopproduction\inputfiles\Dfcstadjust.csv' delimiter = ',' MISSOVER
+        DSD lrecl=32767 firstobs=2 ;
+    informat Ramp $5. ;
+    informat Fcstdest $6. ;
+    informat futdate mmddyy10. ;
+    informat fcstadjust best32. ;
+    format Ramp $5. ;
+    format Fcstdest $6. ;
+    format futdate mmddyy10. ;
+    format fcstadjust best12. ;
+    input Ramp $ Fcstdest $ futdate fcstadjust ;
+    if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+run;
+
+
+data HUBLIB.SFCSTADJUST                          ;
+    %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+    infile 'd:\nopproduction\inputfiles\Sfcstadjust.csv' delimiter = ',' MISSOVER
+        DSD lrecl=32767 firstobs=2 ;
+    informat Ramp $5. ;
+    informat Eqprov $10. ;
+*MFG001 ;
+    informat dayoffcst mmddyy10. ;
+    informat futdate mmddyy10. ;
+    informat fcstadjust best32. ;
+    format Ramp $5. ;
+    format Eqprov $10. ;
+*MFG001 ;
+    format dayoffcst mmddyy10. ;
+    format futdate mmddyy10. ;
+    format fcstadjust best12. ;
+    input Ramp $ Eqprov $ dayoffcst futdate fcstadjust ;
+*MFG001 dayoffcst before futdate;
+    if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detectionmacro variable */
+run;
+
+
+proc print data=hublib.dfcstadjust; title "dfcstadjust";
+run;
+
+
+proc print data=hublib.sfcstadjust;title "sfcstadjust";
+run;
+
+
+/* FIRST, adjust detailed O-D forecast for Major and Minor .
+    Used in NAV valuation */
+/* define required variables for merge */
+
+
+data work.ODdfcstadjust;
+    set hublib.dfcstadjust;
+    format fcstdt date9.;
+    fcstorig = ramp ;
+    fcstdt = futdate;
+run;
+
+
+proc sort data=work.ODdfcstadjust;
+    by fcstorig fcstdest fcstdt;
+
+
+/* create all-in OD fcst -- Major OD's, and Minors, w/ ZZOTHER plugged in for destination */
+
+
+data hublib.ODdemandfcst ;
+    set HUBLIB.majordemandfcst HUBLIB.otherdemandfcst;
+    dow =weekday(fcstdt);
+    if fcstdest = "" then fcstdest = "ZZOTH";
+run;
+
+
+Proc sort data=hublib.ODdemandfcst ;
+    by fcstorig fcstdest fcstdt;
+
+
+proc print data=hublib.ODdemandfcst ;
+run;
+
+
+/* merge statfcst with adjustments, create new demand variable */
+
+
+data hublib.revODdemandfcst ;
+    merge hublib.ODdemandfcst work.ODdfcstadjust;
+    by fcstorig fcstdest fcstdt;
+    if fcstadjust = . then fcstadjust = 0;
+    if fcst = . then fcst = 0;
+    demandadj = fcst + fcstadjust;
+*if dow ~= .;
+*save forecast variables;
+    if fcstdt >= &today- &fcstoffset  and
+        fcstdt <= &today- &fcstoffset + &fcsthoriz ;
+
+
+    fcstdemand = fcst ;
+*now, reset supply and demand equal to adjusted numbers, for use in subsequent models;
+    fcst = demandadj;
+    drop ramp futdate;
+run;
+
+
+proc print data = hublib.revODdemandfcst (obs=1000);
+    var fcstorig fcstdest fcstdt fcstdemand fcstadjust fcst;
+run;
+
+
+/************************************************************************/
+/* SECOND, adjust the location-boxtype supply based on adjustment files */
+
+
+data sfcstadjust;
+    set HUBLIB.Sfcstadjust ;
+    if dayoffcst = &today;
+
+
+proc sort data=Sfcstadjust ;
+    by dayoffcst ramp futdate eqprov  ;
+*mfg001 dayoffcst;
+
+
+proc sort data=hublib.supplyequipment ;
+    by dayoffcst ramp futdate eqprov  ;
+run;
+
+
+proc print data=hublib.supplyequipment ;
+run;
+
+
+proc contents data=hublib.supplyequipment;
+run;
+
+
+proc contents data=Sfcstadjust;
+run;
+
+
+data hublib.REVsupplyequipment;
+    merge Sfcstadjust hublib.supplyequipment;
+    by dayoffcst ramp futdate eqprov  ;
+    if fcstadjust = . then fcstadjust = 0;
+    if boxcount = . then boxcount = 0;
+    if outbox = . then outbox = 0;
+    boxcountadj = boxcount + fcstadjust;
+*   if majmkt ~= .;
+* save forecast variables;
+    fcstboxcnt = boxcount ;
+* now, reset supply and demand equal to adjusted numbers, for use in subsequent models;
+    boxcount = boxcountadj ;
+    if supplydt >= &today- &fcstoffset  and
+        supplydt <= &today- &fcstoffset + &fcsthoriz ;
+    if dayoffcst = &today;
+*GDG001f;
+    drop fcstdest supplydt _freq_ majmkt;
+*drop fcstdest supplydt _freq_ curbox movingbox majmkt;
+run;
+
+
+proc print data=hublib.REVsupplyequipment ;
+run;
+
+
+proc contents data=hublib.REVsupplyequipment;
+run;
+
+
+proc means data=hublib.revsupplyequipment sum;
+    var fcstboxcnt boxcount boxcountadj fcstadjust;
+run;
+
+
+
+proc print;
+run;
+
+
+/* this code checks new supply forecast adjustment -
+data checkit;
+merge HUBLIB.Sfcstadjust hublib.supplyequipment;
+by dayoffcst ramp futdate eqprov  ;
+if fcstadjust = . then fcstadjust = 0;
+if boxcount = . then boxcount = 0;
+boxcountadj = boxcount + fcstadjust;
+fcstboxcnt = boxcount ;
+* now, reset supply and demand equal to adjusted numbers, for use in subsequent models;
+boxcount = boxcountadj ;
+if fcstdest = "";
+if dayoffcst = &today;
+if fcstadjust ~= 0;
+*GDG001;
+drop fcstdest supplydt _freq_ majmkt;
+*drop fcstdest supplydt _freq_ curbox movingbox majmkt;
+run;
+
+
+proc means data=checkit sum;
+    var fcstadjust;
+run;
+*/
+
+
+/************************************************************/
+/*  THIRD, adjust the ramp-based S and D forecast
+    this is the summary output forecast for S and D by ramp
+    need to summarize sfcstadjust and dfcstadjust by ramp */
+
+
+proc print data=hublib.forecast; title "base demand and supply forecast -- Summarized by Origin";
+run;
+
+
+proc sort data=sfcstadjust;
+    by ramp futdate;
+run;
+
+
+proc means data=sfcstadjust noprint;
+    by ramp futdate;
+    var fcstadjust;
+    output out= sfcstadjustsum sum=sfcstadjust;
+run;
+
+
+data sfcstadjustsum ;
+    set sfcstadjustsum ;
+    drop _type_ _freq_;
+proc print; title "sfcstadjustSummary";
+run;
+
+
+proc sort data=hublib.dfcstadjust;
+    by ramp futdate;
+run;
+
+
+proc means data=hublib.dfcstadjust;
+    by ramp futdate;
+    var fcstadjust;
+    output out= dfcstadjustsum sum=dfcstadjust;
+run;
+
+
+data dfcstadjustsum ;
+    set dfcstadjustsum ;
+    drop _type_ _freq_;
+
+
+
+proc print; title "dfcstadjustSummary";
+run;
+
+
+proc sort data = hublib.forecast;
+    by ramp futdate;
+
+
+data hublib.revforecast;
+    merge hublib.forecast dfcstadjustsum sfcstadjustsum;
+    by ramp futdate;
+    if dfcstadjust = . then dfcstadjust = 0;
+    if sfcstadjust = . then sfcstadjust = 0;
+    demandadj = demand + dfcstadjust;
+    supplyadj = supply + sfcstadjust;
+    if dayoffcst ~= .;
+* save forecast variables;
+    fcstdemand = demand;
+    fcstsupply = supply;
+    fcstsurplus = predsurplus;
+* now, reset supply and demand equal to adjusted numbers, for use in subsequent models;
+    demand = demandadj;
+    supply = supplyadj;
+    predsurplus = supply - demand;
+
+
+run;
+
+
+proc print data=hublib.revforecast; title "ajusted demand and supply forecast";
+    var ramp dayoffcst futdate sfcstadjust;
+run;
+
+
+/* error checking -- adjustments should result in same total forecast */
+
+
+proc means data=hublib.revODdemandfcst sum;
+    var fcst fcstdemand;
+run;
+
+
+proc means data=hublib.revforecast sum;
+    var demand fcstdemand supply fcstsupply;
+run;
+
+
+proc means data=hublib.revsupplyequipment sum;
+    var fcstboxcnt boxcount boxcountadj;
+run;
+
+
+PROC EXPORT DATA= HUBLIB.revFORECAST
+    OUTFILE= 'c:\sasmodel\csvsout\revforecast.csv'
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= hublib.revODdemandfcst
+    OUTFILE= 'c:\sasmodel\csvsout\revODdemandfcst.csv'
+    DBMS=CSV REPLACE;
+RUN;
+
+
+PROC EXPORT DATA= hublib.revsupplyequipment
+    OUTFILE= 'c:\sasmodel\csvsout\revsupplyequipment.csv'
+    DBMS=CSV REPLACE;
+RUN;
+
+
+proc contents data=hublib.forecast;
+run;
+
+
+proc contents data=hublib.revforecast;
+run;
+
+/*
+proc printto;
+run;

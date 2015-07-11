@@ -1,0 +1,55 @@
+* Overview of goals
+
+1. Determine similarity of 3 digit zip areas along 3 different axes of similarity
+
+    1. Drayage Miles
+    2. Empty Miles
+    3. Freight Balance
+    4. Freight Volume
+
+1. Intial Steps:
+
+    1. Gather Data
+    1. 
+
+
+
+
+
+
+
+    1. Determine a framework:
+ 
+      1. Partitioning or Hirerachrical
+ 
+         1. constuct random partitions and refine them algorithmically (k-means)
+ 
+             1. Not good for oddly shaped clusters; not good for 
+             1. Good for contiguious clusters
+             1. Badly suited to noisy data
+
+          1. 
+
+    
+       1. 3 major geographical clustering methods:
+
+          1. KMeans: Decide number of clusters and algorithmically determine what nodes belong to what group
+          1. AGNES: Agglomerative Clustering
+          1. DIANA: Divisive Clustering 
+          1. 
+
+
+
+
+       1. Collected Dray Data a Varietyof ways, ran the analysis, and found untrustworthy results
+
+       1. TODO: Examine how to add in other dimensions
+
+          1. Dimesions must be scaled --OR-- we must run a Princomp on all data to determine 
+          1. 
+
+    1. Examine various methods for determing similarity 
+
+    1. Examine 
+
+    1.

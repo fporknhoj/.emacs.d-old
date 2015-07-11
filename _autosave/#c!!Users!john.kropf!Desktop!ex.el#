@@ -1,0 +1,28 @@
+;; This buffer is for notes you don't want to save, and for Lisp evaluation.
+;; If you want to create a file, visit that file with C-x C-f,
+;; then enter the text in that file's own buffer.
+
+(read-from-minibuffer "enter this" :INITIAL-CONTENTS (("this" 1) ("that" 2)))
+
+(sql-ms)
+#<buffer *SQL*>
+
+set variable sql-ms-program
+swt variable sql-ms-options
+
+(setq-default sql-ms-options '("/Y" "30"))
+("/Y" "30")
+
+(setq-default sql-ms-program "sqlcmd")
+"sqlcmd"
+
+(defun sqlint ()
+  (setq sql-user "")
+  (setq sql-password "")
+  (setq sql-database "DW2")
+  (setq sql-server "HUBDWDB01")
+  (command-execute 'sql-ms))
+
+(sqlint)
+
+C:\python\3.4\settings\.ipython

@@ -1,0 +1,714 @@
+;(set-default-font "InputMono Light 8")
+
+(setq my-package-directory "C:\\Users\\john.kropf\\configfiles\\.emacs.d\\installed_packages")
+
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(blink-cursor-mode nil)
+ '(custom-safe-themes
+   (quote
+    ("3cd28471e80be3bd2657ca3f03fbb2884ab669662271794360866ab60b6cb6e6" "96998f6f11ef9f551b427b8853d947a7857ea5a578c75aa9c4e7c73fe04d10b4" "46fd293ff6e2f6b74a5edf1063c32f2a758ec24a5f63d13b07a20255c074d399" "7bde52fdac7ac54d00f3d4c559f2f7aa899311655e7eb20ec5491f3b5c533fe8" "bb6b64bfb2f63efed8dea1ca03691c07c851a8be6f21675fe4909289d68975d9" "71373650950508e648f86e3d1e4a449a859aeb6d8cf791833d9104715d5943a3" "dd3eb539595bd7643baaff3a3be67b735a82052c37c2d59192ef51a0983dbfca" "0ae977e603e99d89c80d679377bfed4a904317968bd885ee063455cee01728d3" "3a0248176bf115cd53e0f15e30bb338b55e2a09f1f9508794fcd3c623725c8bd" "aa95b9a243de8c18230ed97315c737ceba2c8ebda8cff997d35b4c2fab5ba007" "549c1c977a8eea73021ca2fcc54169d0b2349aaee92d85b6f35e442399cbb61b" "e008d9149dd39b249d4f8a9b5c1362d8f85bd11e9c08454e5728fbf0fcc11690" "9bc1eec9b485726318efd9341df6da8b53fa684931d33beba57ed7207f2090d6" "c3806e9426f97f54eccd51bb90c1fabb9205bf359d9ab23311638e1a68aae472" "a1493957ee779057acdc4c337133f217dd7b2edfdeeffed903ba2f16246f665a" "bb08c73af94ee74453c90422485b29e5643b73b05e8de029a6909af6a3fb3f58" "073ddba1288a18a8fb77c8859498cf1f32638193689b990f7011e1a21ed39538" "eb399cbd3ea4c93d9ab15b513fd6638e801600e13c8a70b56f38e609397a5eca" "cfd79d66fe6b142b570048ed9a28cd2c71876f824d76e1d9f2da0f3353062f3f" "57d7e8b7b7e0a22dc07357f0c30d18b33ffcbb7bcd9013ab2c9f70748cfa4838" "af4cfe7f2de40f19e0798d46057aae0bccfbc87a85a2d4100339eaf91a1f202a" "b39af5ef9cfc7d460bd3659d26731effa17799127d6916c4d85938dda650d4b0" "a3821772b5051fa49cf567af79cc4dabfcfd37a1b9236492ae4724a77f42d70d" "f2355ec455645cd4a4b8f8ac8bcb96c50bc8f383634e59307d8bc651143f6be4" "98e5e942303b4f356d6573009c96087f9b872f2fa258c673188d913f6faf17ea" "09feeb867d1ca5c1a33050d857ad6a5d62ad888f4b9136ec42002d6cdf310235" "bbb51078321186cbbbcb38f9b74ea154154af10c5d9c61d2b0258cb4401ac038" "008775b6f17cba84b22da8c820d9c6778fac161291f1a9cc252a7e735714bc56" "cedc71ca0adde34902543489952ebe6fde33b185a690a6f29bcaaefd6ec13fd8" "8d1baba3bbafc11628972b5b0a4453b5120be4fb8d30ad0ca4b35d114422dd65" "5cd698ce53179b1e4eaa7917c992832a220600c973967904fea71e3980a46532" "81df5c7887aaa76c0174ae54aacd20ab18cc263b95332b09efa0d60a89feaf6a" "d5d41f830f46af348112e869fbdc66315b560d7f8da55c7b067269f890d28911" "7ec6a9707c69e7a4ea1a8761b3f28f8dc55c6c5cacd597718c994b1561e435f3" "0ff3aeed353697992d100ddf8a94d065a58ffbde5a40afefa605f211757c8ab0" "70b9e0d0b857d6497c6623bb360a3a7f915251c4a6233c30b65f9005eb9f4256" "f211f8db2328fb031908c9496582e7de2ae8abd5f59a27b4c1218720a7d11803" "adbe7ba38c551281f21d760de0840cab0e1259964075a7e46cc2b9fdea4b82d6" "c9445e1f0bd72e79e35f3e6f04c22ccf37e3a187a8e5581b84e8ea8116fe0912" "47e37fa090129214330d13a68549d5c86ccc2c41f4979cb4be130ff945a9859a" "cd8130f57c8deaa95bfb08bf20dc724fe22a4ca03a346b61088ef9079ae3d0a5" "923faef2c7ed017e63f517703c846c6190c31400261e8abdb1be06d5b46ea19a" "73e09ba6f23a9b3aeedb3ee8589da74182b644c169daa62c4454eac73eea610a" "6cf0e8d082a890e94e4423fc9e222beefdbacee6210602524b7c84d207a5dfb5" "7ed4054a1312e46f96022831bbe031cf1a8597a2acba36af39d60fa9d14bec6b" "7f14fad67d7ac8d0555bd5a1fd1a429ce2dd37162c4e2dc7ae501f54bad1273a" "12dd37432bb454355047c967db886769a6c60e638839405dad603176e2da366b" "90b5269aefee2c5f4029a6a039fb53803725af6f5c96036dee5dc029ff4dff60" "1989847d22966b1403bab8c674354b4a2adf6e03e0ffebe097a6bd8a32be1e19" "9bcb8ee9ea34ec21272bb6a2044016902ad18646bd09fdd65abae1264d258d89" "3c9d994e18db86ae397d077b6324bfdc445ecc7dc81bb9d528cd9bba08c1dac1" "c7359bd375132044fe993562dfa736ae79efc620f68bab36bd686430c980df1c" "7d4d00a2c2a4bba551fcab9bfd9186abe5bfa986080947c2b99ef0b4081cb2a6" "33c5a452a4095f7e4f6746b66f322ef6da0e770b76c0ed98a438e76c497040bb" "e26780280b5248eb9b2d02a237d9941956fc94972443b0f7aeec12b5c15db9f3" "0ebe0307942b6e159ab794f90a074935a18c3c688b526a2035d14db1214cf69c" "bf648fd77561aae6722f3d53965a9eb29b08658ed045207fe32ffed90433eb52" "53c542b560d232436e14619d058f81434d6bbcdc42e00a4db53d2667d841702e" "ce79400f46bd76bebeba655465f9eadf60c477bd671cbcd091fe871d58002a88" "a774c5551bc56d7a9c362dca4d73a374582caedb110c201a09b410c0ebbb5e70" "38c4fb6c8b2625f6307f3dde763d5c61d774d854ecee9c5eb9c5433350bc0bef" "1e7e097ec8cb1f8c3a912d7e1e0331caeed49fef6cff220be63bd2a6ba4cc365" "fc5fcb6f1f1c1bc01305694c59a1a861b008c534cae8d0e48e4d5e81ad718bc6" default)))
+ '(python-indent-offset 4)
+ '(save-place t nil (saveplace))
+ '(show-paren-mode t)
+ '(sql-connection-alist
+   (quote
+    (("PROS"
+      (sql-product
+       (quote ms))
+      (sql-user "")
+      (sql-server "HUBDWPROD20")
+      (sql-database "PROS")))))
+ '(sql-ms-options (quote ("/Y" "35")))
+ '(sql-ms-program "sqlcmd")
+ '(tool-bar-mode nil))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;  Mine  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;(if (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
+;(if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+;(if (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+(scroll-bar-mode -1)
+
+;;Title Bar
+(setq frame-title-format "%b")
+
+;;Make able to overwrite selection
+(delete-selection-mode 1)
+
+(setq-default line-spacing 2)
+
+;;ELPA
+;(add-to-list 'package-archives '("melpa" , "http://melpa.milkbox.net/packages/"))
+
+;;VIM Navigation
+(global-set-key (kbd "C-S-h") 'backward-char)
+(global-set-key (kbd "C-S-j") 'previous-line)
+(global-set-key (kbd "C-S-k") 'next-line)
+(global-set-key (kbd "C-S-l") 'forward-char) 
+(global-set-key (kbd "C-S-e") 'forward-word)
+(global-set-key (kbd "C-S-b") 'backward-word)
+
+
+;;Random
+;http://stackoverflow.com/questions/21880950/what-combination-of-python-mode-ipython-ipython-el-versions-releases-and-ini
+;use shift + arrow keys to move windows
+;(windmove-default-keybindings 'shift)
+
+
+
+
+
+
+;;Set CxCb to full screen buffer menu
+(global-set-key "\C-x\C-b" 'ibuffer);'buffer-menu)
+
+
+
+
+
+
+;;Remap esc to quit rather than meta 
+;(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+
+
+
+
+
+
+;; Cursor Color
+;(set-cursor-color "green")
+;(add-to-list 'default-frame-alist '(cursor-color . "palegoldenrod"))
+
+
+
+
+
+
+;;No Splash
+(setq inhibit-splash-screen t)
+
+
+
+
+
+
+;;Toggle Truncate Lines off
+(setq-default truncate-lines t)
+ ;(setq-default global-visual-line-mode t)
+ ;(setq longlines-mode t)
+
+
+
+
+
+
+;;Turn on desktop save mode
+;(desktop-save-mode 1)
+(desktop-save-mode 1)
+(setq desktop-save t)
+(setq desktop-load-locked-desktop t)
+(setq desktop-base-lock-name
+(convert-standard-filename (format ".emacs.desktop.lock-%d" (emacs-pid))))
+(setq desktop-dirname user-emacs-directory)
+
+
+
+
+
+
+;;Stop progressively faster mouse scrolling
+(setq mouse-wheel-progressive-speed nil)
+
+
+
+
+
+
+;;Ess & iPython
+(add-to-list 'load-path (concat my-package-directory "/ess/lisp"));"C:\\Users\\John.Kropf\\AppData\\Roaming\\.emacs.d\\installed_packages\\ess\\lisp")
+(setq ess-use-auto-complete t)
+(load "ess-site")
+
+
+
+
+
+
+;;; trying to use python-mode instead of deafult to fix fucking ipython color scheme but it wont work
+;; (add-to-list 'load-path (concat my-package-directory "/python-mode"))
+;; (require 'python-mode)
+
+;; ; use IPython
+;; (setq-default py-shell-name "ipython")
+;; (setq-default py-which-bufname "iPython")
+;; ; use the wx backend, for both mayavi and matplotlib
+;; (setq py-python-command-args
+;;   '("--gui=wx" "--pylab=wx" "-colors" "grayscale-dark"))
+;; (setq py-force-py-shell-name-p t)
+
+; switch to the interpreter after executing code
+;; (setq py-shell-switch-buffers-on-execute-p t)
+;; (setq py-switch-buffers-on-execute-p t)
+; don't split windows
+;; (setq py-split-windows-on-execute-p nil)
+; try to automagically figure out indentation
+;; (setq py-smart-indentation t)
+
+
+;; (setq-default py-shell-name "ipython")
+;; (setq-default py-which-buffname "iPython")
+;; (setq py-python-command-args '("-pylab" "-colors" "grayscale-dark"))
+;; (setq py-force-py-shell-name-p t)
+
+;;trying ipython tab completion: that works :)
+;; (setq
+;;  python-shell-interpreter "C:\\python\\3.4\\python-3.4.2.amd64\\python.exe"
+;;  python-shell-interpreter-args "-i C:\\python\\3.4\\python-3.4.2.amd64\\Scripts\\ipython-script.py"
+;;  python-shell-prompt-regexp "In \\[[0-9]+\\]: "
+;;  python-shell-prompt-output-regexp "Out\\[[0-9]+\\]: "
+;; ;;python-shell-completion-setup-code "from IPython.core.completerlib import module_completion"
+;; ;;python-shell-completion-module-string-code "';'.join(module_completion('''%s'''))\n"
+;; ;;python-shell-completion-string-code "';'.join(get_ipython().Completer.all_completions('''%s'''))\n"
+;; )
+
+
+;;Sepia for Perl
+
+;; (add-to-list 'load-path "c:/users/john.kropf/appdata/roaming/.emacs.d/installed_packages/pde/lisp/")
+;; (load "pde-load")
+
+(add-to-list 'load-path (concat my-package-directory "/sepia"))
+(setq sepia-perl5lib (list (expand-file-name (concat my-package-directory "/sepia/lib"))))
+(defalias 'perl-mode 'sepia-mode)
+(require 'sepia)
+
+
+
+
+
+;; markdown
+(add-to-list 'auto-mode-alist '("\\.text\\'" . markdown-mode))
+(add-to-list 'auto-mode-alist '("\\.markdown\\'" . markdown-mode))
+(add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
+
+(defun markdown-custom ()
+  "markdown-mode-hack"
+  (setq markdown-command "multimarkdown"))
+(add-hook 'markdown-mode-hook '(lambda () (markdown-custom)))
+
+
+
+
+;; lisp
+(setq inferior-lisp-program "sbcl")
+
+
+
+
+
+;(setq ipython-command "C:\\Python\\wp2\\python-2.7.6\\Scripts\\ipython.exe")
+;(require 'ipython)
+
+
+
+
+
+
+;;Multiple Cursors
+(add-to-list 'load-path (concat my-package-directory "/multiple-cursors"))
+(require 'multiple-cursors)
+(global-set-key (kbd "C-S-c C-S-c") 'mc/mark-next-word-like-this)
+(global-set-key (kbd "C-,") 'mc/mark-next-like-this)
+(global-set-key (kbd "C-<") 'mc/mark-previous-like-this)
+(global-set-key (kbd "C-c C-,") 'mc/mark-all-like-this)
+(global-set-key (kbd "C-.") 'mc/mark-more-like-this-extended) 
+
+
+
+
+
+;;Auto-complete 
+(add-to-list 'load-path (concat my-package-directory "/auto-complete"))
+(require 'auto-complete)
+(require 'auto-complete-config)
+(global-auto-complete-mode t)
+
+
+
+
+
+
+
+
+;;Powerline
+(add-to-list 'load-path my-package-directory)
+;(require 'powerline)
+
+
+
+
+
+
+;;SQL Indent
+(add-to-list 'load-path my-package-directory)
+(require 'sql-indent)
+(require 'sql-transform)
+(require 'tsql-indent)
+(require 'plsql)
+
+
+
+
+
+
+;; SQL setup
+(setq sql-ms-program "osql")
+
+
+
+
+
+
+;;Aspell
+(add-to-list 'exec-path "c:\\Program Files (x86)\\Aspell\\bin\\")
+(setq ispell-program-name "aspell")
+;(setq ispell-personal-dictionary "C:\\Program Files\\Aspell\\dict")
+(require 'ispell)
+(global-set-key (kbd "<f8>") 'flyspell-mode)
+(global-set-key (kbd "C-<f8>") 'ispell-word)
+
+
+
+
+
+
+;;Comment Region 
+(global-set-key (kbd "C-c C-c C-c") 'comment-region)
+
+
+
+
+
+
+;; autopair perens
+;(electric-pair-mode 1)
+
+;; show perens mode 
+;(show-paren-mode 1)
+;(setq show-paren-delay 25)
+ (show-paren-mode 0)
+
+
+
+
+
+
+;;move backup file storage to temporary directory in the OS 
+; from http://emacsredux.com/blog/2013/05/09/keep-backup-and-auto-save-files-out-of-the-way/
+;; (setq backup-directory-alist
+;;       `((".*" . ,temporary-file-directory)))
+;; (setq auto-save-file-name-transforms
+;;       `((".*" ,temporary-file-directory t)))
+
+;;; backup/autosave
+(defvar backup-dir (expand-file-name "~/.emacs.d/_backup/"))
+(defvar autosave-dir (expand-file-name "~/.emacs.d/_autosave/"))
+(setq backup-directory-alist (list (cons ".*" backup-dir)))
+(setq auto-save-list-file-prefix autosave-dir)
+(setq auto-save-file-name-transforms `((".*" ,autosave-dir t)))
+
+
+
+
+
+
+
+;; new files open in new window
+;(setq pop-up-frames t)
+
+;; (custom-set-faces
+;;  '(default ((t (:family "InputMonoNarrow" :foundry "outline" :slant normal :weight normal :height 80 :width normal)))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "TheMixMono-Semilight" :foundry "outline" :slant regular :weight normal :height 80 :width normal)))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "Triskweline" :foundry "outline" :slant normal :weight normal :height 100 :width normal))))
+;;  )
+
+;;font 
+;(set-face-attribute 'default t :font  "Nitti Light WM2")
+;(set-face-attribute 'default t :height 120)
+;(set-default-font "Nitti Light WM2 10")
+;(set-default-font "ProFontWindows 10")
+;(set-default-font "M+ 1mn Regular 9")
+;(set-default-font "Everson Mono 12")
+;(set-default-font "Consolas 11")
+;(set-default-font "Anonymous Pro Minus 10")
+;(set-default-font "Prestige Becker 11")
+
+;; (custom-set-faces
+;;  '(default ((t (:family "PragmataPro" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "Prestige12 BT Roman" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "ProggyTiny" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;; ;; '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Candara"))))
+;; ;; '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1 :family "Candara"))))
+;;  )
+
+;; (custom-set-faces
+;;  '(default ((t (:family "ProggyClean" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;; ;; '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Candara"))))
+;; ;; '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1 :family "Candara"))))
+;;  )
+
+;; (custom-set-faces
+;;  '(default ((t (:family "Droid Sans Mono" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "Input" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "Segoe UI Mono" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1 :family "Candara")))))
+ 
+;; (custom-set-faces
+;;  '(default ((t (:family "monofur" :foundry "outline" :slant normal :weight normal :height 100 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "Anonymous Pro" :foundry "outline" :slant normal :weight normal :height 100 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.98 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.98 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "Courier Prime" :foundry "outline" :slant normal :weight normal :height 100 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1 :family "Candara")))))
+ 
+;; (custom-set-faces
+;;  '(default ((t (:family "ProggyTinyTT" :foundry "outline" :slant normal :weight normal :height 120 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.65 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.65 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "QuickType Mono" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.0 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.0 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "ProFontWindows" :foundry "outline" :slant normal :weight normal :height 90 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.95 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.95 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "Consolas" :foundry "outline" :slant normal :weight normal :height 80 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.05 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.05 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "ProggySmallTT" :foundry "outline" :slant normal :weight normal :height 120 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 0.77 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 0.77 :family "Candara")))))
+
+;; (custom-set-faces
+;;  '(default ((t (:family "Consolas" :foundry "outline" :slant normal :weight light :height 100 :width normal))))
+;;  '(mode-line ((t (:background "#fcfcfc" :foreground "#333333" :box nil :height 1.1 :family "Candara"))))
+;;  '(mode-line-inactive ((t (:foreground "#f9f9f9" :background "#666666" :box nil :height 1.1 :family "Candara")))))
+
+
+
+
+
+
+
+
+
+
+;;Set Color Theme
+(add-to-list 'custom-theme-load-path "~/.emacs.d/themes")
+(load-theme 'mccarthy t) ;(load-theme 'snow t);(load-theme 'brin t);(load-theme 'snowish t);(load-theme 'standard t);(load-theme 'charcoal-black t);(load-theme 'desert t);(load-theme 'high-contrast t);(load-theme 'solarized-light t);(load-theme 'spacegray t);(load-theme 'jedit-grey t);(load-theme 'jsc-light t) ;(load-theme 'heroku t);(load-theme 'retro-orange t);(load-theme 'phoenix-dark-pink t);(load-theme 'adwaita t);(load-theme 'tango t);(load-theme 'charcoal-black t);(load-theme 'tango);(load-theme 'phoenix-dark-pink t);(load-theme 'spacegray t);(load-theme 'dichromacy t);(load-theme 'firebelly t);(load-theme 'tango t);(load-theme 'zenburn t);(load-theme 'brin t);(load-theme 'dichromacy t);(load-theme 'solarized-dark t);(load-theme 'mccarthy t);(load-theme 'ir-black t) ;(load-theme 'solarized-light t)  ;(load-theme 'wombat t) ;(load-theme 'adwaita t) ;(load-theme 'solarized-dark t)
+;(load-theme 'dark-font-lock t)
+
+
+
+
+
+
+
+;key bindings
+(global-set-key  [f7] 'search-all-buffers)
+(global-set-key  [f5] 'replace-string)
+(global-set-key  [f6] 'replace-regexp)
+(global-set-key  [f9] 'execute-extended-command)
+(global-set-key [f12] 'keyboard-escape-quit)
+(global-set-key "\C-x\C-z" 'repeat-complex-command)
+
+(defun w32-browser (doc) (w32-shell-execute 1 doc))
+(eval-after-load "dired" '(define-key dired-mode-map [f3] (lambda () (interactive) (w32-browser (dired-replace-in-string "/" "\\" (dired-get-filename))))))
+
+;;Indents
+(setq-default indent-tabs-mode nil)
+(setq-default tab-width 4)
+
+(add-hook 'python-mode-hook
+	  (function (lambda ()
+		      (setq indent-tabs-mode nil
+			    tab-width 4))))
+
+;;Python Newline and indent
+(add-hook 'python-mode-hook '(lambda ()
+    (local-set-key (kbd "RET") 'newline-and-indent)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;ELPA Package Management;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(require 'package)
+(add-to-list 'package-archives
+  '("melpa" . "http://melpa.milkbox.net/packages/") t)
+
+(require 'package)
+(add-to-list 'package-archives
+  '("melpa-stable" . "http://melpa-stable.milkbox.net/packages/") t)
+
+(when (< emacs-major-version 24)
+  (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+;; My Macros
+
+(defun unfill-paragraph ()
+  "Replace newline chars in current paragraph by single spaces.
+This command does the inverse of `fill-paragraph'."
+  (interactive)
+  (let ((fill-column 90002000)) ; 90002000 is just random. you can use `most-positive-fixnum'
+    (fill-paragraph nil)))
+
+(defun unfill-region (start end)
+  "Replace newline chars in region by single spaces.
+This command does the inverse of `fill-region'."
+  (interactive "r")
+  (let ((fill-column 90002000))
+    (fill-region start end)))
+
+;; Comment/Uncomment Line
+;;(defun my-comment-line ()
+;;  "comment or uncomment current line"
+;;  (interactive)
+;;  (comment-or-uncomment-region (line-beginning-position) (line-end-position)))
+;;(put 'downcase-region 'disabled nil)
+;;(put 'upcase-region 'disabled nil)
+;;
+;;(global-set-key (kbd "C-c C-d") 'my-comment-line)
+
+(defun comment-or-uncomment-region-or-line ()
+    "Comments or uncomments the region or the current line if there's no active region."
+    (interactive)
+    (let (beg end)
+        (if (region-active-p)
+            (setq beg (region-beginning) end (region-end))
+            (setq beg (line-beginning-position) end (line-end-position)))
+        (comment-or-uncomment-region beg end)))
+
+(global-set-key (kbd "C-c C-/") 'comment-or-uncomment-region-or-line)
+
+;; Fix fucking sql queries that are all on one line 
+(defun fix-sql-format (start end)
+  "make sql readable"
+  (interactive "r")
+  (save-restriction
+    (narrow-to-region start end)
+
+    (goto-char (point-min))
+    (while (search-forward "," nil t) (replace-match ",\n" nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "AND " nil t) (replace-match "\n AND " nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "SELECT " nil t) (replace-match "SELECT \n" nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "WHERE " nil t) (replace-match "WHERE \n" nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "INNER JOIN" nil t) (replace-match "\nINNER JOIN \n" nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "ON " nil t) (replace-match "\nON \n" nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "FROM " nil t) (replace-match "FROM \n" nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "LEFT JOIN " nil t) (replace-match "\nLEFT JOIN \n" nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "HAVING " nil t) (replace-match "HAVING \n" nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "INTO " nil t) (replace-match "\nINTO \n" nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "GROUP BY " nil t) (replace-match "GROUP BY \n" nil t))
+
+    (goto-char (point-min))
+    (while (search-forward "ORDER BY" nil t) (replace-match "ORDER BY \n" nil t))
+    ) )
+
+(defun my-align-assignments ()
+
+  (interactive)
+  (save-excursion
+    (let ((markers ())           ;retain all "=" positions here.
+          (col-offsets ())       ;corresponding column offsets
+          (longest-offset 0))
+      (unwind-protect
+          (flet
+              ((examine-current-line ()
+                 ;; Return the position of "=" if the current
+                 ;; line looks like an assignment.  Otherwise,
+                 ;; return nil.  Point is not moved.
+                 (assert (bolp))
+                 (when (looking-at "\\(?:\\s-\\|\\sw\\|\\s_\\|\\s.\\)*\\(=\\)")
+                   (push (copy-marker (match-beginning 1)) markers)
+                   (let ((col-offset (- (match-beginning 1) (point))))
+                     (callf max longest-offset col-offset)
+                     (push col-offset col-offsets)
+                     t))))
+            (forward-line 0)
+            (examine-current-line)
+            ;; if the first line did not match, it doesn't tell us anything: a
+            ;; user can launch the command from the following line.
+            (loop 
+             do
+             (when (= (forward-line -1) -1) (return)) ;reached (point-min)
+             (unless (examine-current-line) (return)))
+            ;; okay, now we have longest-offset and know how many spaces to put
+            ;; at each marker
+            (loop
+             for marker in markers
+             for col-offset in col-offsets
+             do
+             (goto-char marker)
+             (insert-char ?\s (- longest-offset col-offset))))
+        (dolist (m markers)
+          (set-marker m nil))))))
+
+(defun my-r-align-assignments ()
+
+  (interactive)
+  (save-excursion
+    (let ((markers ())           ;retain all "=" positions here.
+          (col-offsets ())       ;corresponding column offsets
+          (longest-offset 0))
+      (unwind-protect
+          (flet
+              ((examine-current-line ()
+                 ;; Return the position of "=" if the current
+                 ;; line looks like an assignment.  Otherwise,
+                 ;; return nil.  Point is not moved.
+                 (assert (bolp))
+                 (when (looking-at "\\(?:\\s-\\|\\sw\\|\\s_\\|\\s.\\)*\\(<-\\)")
+                   (push (copy-marker (match-beginning 1)) markers)
+                   (let ((col-offset (- (match-beginning 1) (point))))
+                     (callf max longest-offset col-offset)
+                     (push col-offset col-offsets)
+                     t))))
+            (forward-line 0)
+            (examine-current-line)
+            ;; if the first line did not match, it doesn't tell us anything: a
+            ;; user can launch the command from the following line.
+            (loop 
+             do
+             (when (= (forward-line -1) -1) (return)) ;reached (point-min)
+             (unless (examine-current-line) (return)))
+            ;; okay, now we have longest-offset and know how many spaces to put
+            ;; at each marker
+            (loop
+             for marker in markers
+             for col-offset in col-offsets
+             do
+             (goto-char marker)
+             (insert-char ?\s (- longest-offset col-offset))))
+        (dolist (m markers)
+          (set-marker m nil))))))
+
+
+;; I know that string is in my Emacs somewhere!
+(require 'cl)
+(defcustom search-all-buffers-ignored-files (list (rx-to-string '(and bos (or ".bash_history" "TAGS") eos)))
+  "Files to ignore when searching buffers via \\[search-all-buffers]."
+  :type 'editable-list)
+
+(require 'grep)
+(defun search-all-buffers (regexp prefix)
+  "Searches file-visiting buffers for occurence of REGEXP.  With
+prefix > 1 (i.e., if you type C-u \\[search-all-buffers]),
+searches all buffers."
+  (interactive (list (grep-read-regexp)
+                     current-prefix-arg))
+  (message "Regexp is %s; prefix is %s" regexp prefix)
+  (multi-occur
+   (if (member prefix '(4 (4)))
+       (buffer-list)
+     (remove-if
+      (lambda (b) (some (lambda (rx) (string-match rx  (file-name-nondirectory (buffer-file-name b)))) search-all-buffers-ignored-files))
+      (remove-if-not 'buffer-file-name (buffer-list))))
+
+   regexp))
+
+(defun fix-trend-analysis ()
+  (interactive)
+  (replace-string "$" "")
+  (beginning-of-buffer)
+  (replace-string "`" "")
+  (beginning-of-buffer)
+  (replace-string "\ntau = " "\t")
+  (beginning-of-buffer)
+  (replace-string ", 2-sided pvalue =" "\t")
+  (beginning-of-buffer)
+  (replace-string "\n\n" "\n")
+  (beginning-of-buffer)
+)
+
+
+
+
+
+
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(default ((t (:family "ProFontWindows" :foundry "raster" :slant normal :weight normal :height 83 :width normal)))))

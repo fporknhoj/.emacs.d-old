@@ -1,0 +1,304 @@
+/*use d6.sas*/
+
+data combdel;set f;
+run;
+
+libname dwpa odbc dsn='dw_pa' schema=dbo;
+
+proc sql;
+
+create table fpku as 
+select case 
+		when OriginRampSubMarket 
+		in ("CHIL ","CHIN ","CHOH ","CHWI ","CHCAN","CHMET") 
+		then "CHGO "
+		when OriginRampSubMarket in ("DALR ","DALL ")
+		then "DALAS"
+		when OriginRampSubMarket in ("ATLAL","ATLAR") 
+		then "ATLA " 
+		else OriginRampSubMarket 
+     end as Market
+	,OriginRampSubMarket as SubMarket
+	,ForecastDate as dt
+	,weekday(ForecastDate) as dayofwk
+	,sum(volume) as volume
+	,"PKU" as Kind
+	,case when ForecastDate between
+		intnx('day',&today,14) and intnx('day',&today,7) then 2
+	when ForecastDate between 
+		intnx('day',&today,7) and intnx('day',&today,0) then 1 
+	end as wkflag
+from dwpa.big_box_demand_forecast_updated
+where ForecastDate between intnx('day',&today,14) and &today
+group by OriginRampSubMarket
+,ForecastDate
+
+;
+
+create table fdel as 
+select case 
+		when fcstdest 
+		in ("CHMET","CHIL ","CHWI ","CHIN ","CHOH ","CHCAN") 
+		then "CHGO "
+		when fcstdest in ("DALL ","DALR ") 
+		then "DALAS"
+		when fcstdest in ("ATLAR","ATLAL") 
+		then "ATLA "
+		else fcstdest 
+	 end as Market
+	,fcstdest as SubMarket
+	,deldt as dt
+	,weekday(deldt) as dayofwk
+	,sum(volume) as volume 
+	,"DEL" as kind
+	,case when deldt between intnx('day',&today,14) and intnx('day',&today,7) then 2
+	when deldt between intnx('day',&today,7) and &today then 1 end as wkflag
+from tdel
+where deldt between intnx('day',&today,14) and &today
+group by submarket
+	,deldt
+	,weekday(deldt)
+
+;
+
+create table fupl as 
+select * from fdel
+union all 
+select * from fpku
+
+;
+
+drop table dwpa.fc_pku_del;
+
+quit;
+
+
+*proc datasets lib=dwpa noprint;
+*	delete fc_pku_del;
+*quit;
+
+data dwpa.fc_pku_del;
+	set fupl;
+run;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*data fpku;
+*	retain Market SubMarket dt dayofwk volume kind wkflag;
+*	set finalfcstoutput(rename=OriginRampMarket=Market rename=OriginRampSubMarket=SubMarket rename=ForecastDate=dt);
+*	*if dt le intnx('week',&today,2) and dt ge &today;
+*	if dt le intnx('day',&today,14) and dt ge intnx('day',&today,7) then wkflag = 2;
+*	if dt lt intnx('day',&today,7) and dt ge &today then wkflag = 1;
+*	if wkflag ne .;
+*	DayOfWk = weekday(dt);
+*	kind = "PKU";
+*	keep Market Submarket dt DayOfWk Volume kind wkflag;
+*run;
+*
+*proc means data=fpku;
+*run;
+*
+*proc means data=finalfcstoutput;run;
+*
+*proc means data=fdel;
+*run;
+*
+**proc print data=fpku;run;
+*
+**proc freq data=combdel;
+**table fcstdest;
+*run;
+*
+*/*data del1;*/
+*/*	retain Market SubMarket dt dayofwk volume kind wkflag;*/
+*/*	set combdel(rename=fcstdest=SubMarket rename=deldt=dt drop=fcstorig);*/
+*/*	* Set Market ;*/
+*/*	Market = SubMarket;*/
+*/*	if SubMarket in ("CHMET","CHIL ","CHWI ","CHIN ","CHMI ","CHOH ","CHCAN") then Market = "CHGO ";*/
+*/*	if SubMarket in ("DALL ","DALR ") then Market = "DALAS";*/
+*/*	if SubMarket in ("ATLAR","ATLAL") then Market = "ATLA ";*/
+*/*	*if Market ne "     " then Market = SubMarket;*/
+*/*	*if Market not in ("CHGO ","DALAS","ATLA ") then Market = SubMarket;*/
+*/*	*date limiters;*/
+*/*	wkflag = 0;*/
+*/*	if dt le intnx('day',&today,14) and dt ge intnx('day',&today,7) then wkflag = 2;*/
+*/*	if dt lt intnx('day',&today,7) and dt ge &today then wkflag = 1;*/
+*/*	if wkflag ne 0;*/
+*/*	DayOfWk = weekday(dt);*/
+*/*	kind = "DEL";*/
+*/*	keep Market Submarket dt DayOfWk Volume kind wkflag;*/
+*/*run;*/
+*
+*proc means data=combdel 
+*
+*
+*
+*proc sort data=combdel;
+*by fcstorig fcstdest deldt;
+*
+*proc expand data = combdel out=combdel2 method=none;
+*by fcstorig fcstdest;
+*id deldt;
+*run;
+*
+*proc sql;
+*
+*drop table fdel;
+*
+*create table fdel as 
+*select case when fcstdest in ("CHMET","CHIL ","CHWI ","CHIN ","CHOH ","CHCAN") then "CHGO "
+*	when fcstdest in ("DALL ","DALR ") then "DALAS"
+*	when fcstdest in ("ATLAR","ATLAL") then "ATLA "
+*	else fcstdest end as Market
+*	,fcstdest as SubMarket
+*	,deldt as dt
+*	,weekday(deldt) as dayofwk
+*	,sum(volume)
+*	,"DEL" as kind
+*	,case when deldt between intnx('day',&today,14) and intnx('day',&today,7) then 2
+*	when deldt between intnx('day',&today,7) and &today then 1 end as wkflag
+*from combdel2
+*where deldt >= &today
+*group by submarket
+*	,deldt
+*	,weekday(deldt);
+*quit;
+*
+*
+*proc print data=fdel2;run;
+*
+*proc sort data=fdel;
+*by market submarket dt;
+*run;
+*
+*proc expand data=fdel out=fdel2 method=none;
+*by Market SubMarket;
+*id dt;
+*run;
+*
+*
+*data fdel;
+*set fdel;
+*if wkflag ne .;
+*run;
+*
+*proc freq data = fdel2;
+*table wkflag;
+*run;
+*
+*
+*/**/
+*/*proc sort data = del1;*/
+*/*	by Market SubMarket dt dayofwk kind wkflag;*/
+*/**/
+*/*proc means data = del1;*/
+*/*	by Market SubMarket dt dayofwk kind wkflag;*/
+*/*	var Volume;*/
+*/*	output out = fdel(keep=market submarket dt dayofwk kind volume wkflag) sum=volume;*/
+*/*run;*/
+*/**/
+*/*proc freq data=fdel;*/
+*/*table wkflag;*/
+*/*run;*/
+*/**/
+*/*proc sql;*/
+*/*create table aqwer as */
+*/*select Market*/
+*/*,submarket*/
+*/*,dt*/
+*/*,dayofwk*/
+*/*,kind*/
+*/*,sum(volume)*/
+*/*,wkflag*/
+*/*from del1*/
+*/*group by market*/
+*/*,submarket*/
+*/*,dt*/
+*/*,dayofwk*/
+*/*,kind*/
+*/*,wkflag;*/
+*/*quit;*/
+*/**/
+*/*proc freq data = aqwer;*/
+*/*table wkflag;*/
+*/*run;*/
+*
+*
+*
+*/*data _null_;*/
+*/*a = intnx('day',&today,14);*/
+*/*b = intnx('day',&today,7);*/
+*/*c = intnx('day',&today,0);*/
+*/*d = &today;*/
+*/*format a date9. b date9. c date9. d date9.;*/
+*/*put a;*/
+*/*put b;*/
+*/*put c;*/
+*/*put d;*/
+*/*run;*/
+*/**/
+*/*|| " between " || b;*/
+*/*put b || " between " || c;*/
+*/*put c || " between " || d;*/
+*/*run;*/
+*
+*
+*data fupl;
+*	set fpku fdel;
+*run;
+*
+*/*proc sort data=upl;*/
+*/*	by Market Submarket dt dayofwk kind wkflag;*/
+*/**/
+*/*proc means data=upl noprint;*/
+*/*	by Market Submarket dt dayofwk kind wkflag;*/
+*/*	var Volume;*/
+*/*	output out=fupl(keep=Market SubMarket dt dayofwk kind volume wkflag) sum=volume;*/
+*/*run;*/
+*/**/
+*/*proc freq data=fupl;*/
+*/*where kind = "PKU";*/
+*/*table submarket;*/
+*/*run;*/
+*
+**proc print data=fupl;run;
+*
+*/*proc datasets lib=dwpa noprint;*/
+*/*	delete fc_pku_del;*/
+*/*run;*/
+*/**/
+*/*data dwpa.fc_pku_del;*/
+*/*	set fupl;*/
+*/*run;*/
+*
+*proc freq data = fupl;
+*where kind = "PKU";
+*table wkflag;
+*run;

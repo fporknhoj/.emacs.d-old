@@ -3,7 +3,11 @@
 
 (setq mc/cmds-to-run-for-all
       '(
+        cua-copy-region
+        cua-cut-region
+        cua-paste
         delete-indentation
+        electric-newline-and-maybe-indent
         ess-smart-comma
         ess-yank
         handle-switch-frame
@@ -14,8 +18,11 @@
 
 (setq mc/cmds-to-run-once
       '(
+        end-of-buffer
+        ess-indent-or-complete
         ess-smart-S-assign
         indent-for-tab-command
+        mouse-set-region
         next-buffer
         overwrite-mode
         python-indent-electric-colon

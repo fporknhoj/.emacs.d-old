@@ -1,0 +1,273 @@
+
+option compress=binary;
+
+proc printto;run;
+
+/* Create turn times */
+
+data turntime;
+	set hublib.alldataplus;
+
+	if ArrDellocDt ne .;
+	if NotifyDt ne .;
+
+	*fucking datetimes ;
+	DateAvail = datepart(ArrDelLocDt) ;
+	DateLoaded = datepart(LoadDt) ;
+	DateNotify = datepart(NotifyDt) ;
+	DowNotify = weekday(datepart(NotifyDt));
+		
+	*Date Math;
+	nt_cu = datdif(datepart(NotifyDt) ,datepart(ArrDellocDt) ,'act/act') ;
+	ld_nt = datdif(datepart(LoadDt) ,datepart(NotifyDt) ,'act/act') ;
+
+	if nt_cu lt 0 then ntad = 0 ;
+
+	format DateAvail date9. DateLoaded date9. DateNotify date9. DowNotify 1.0 ;
+
+	keep fcstorig fcstdest DateAvail DateLoaded DateNotify DowNotify nt_cu ld_nt;
+run;
+
+proc sort data=turntime;
+	by fcstorig fcstdest DowNotify;
+run;
+
+proc univariate data=turntime noprint ;
+	by fcstorig fcstdest;
+	var nt_cu;
+	output out=nt_cu_time median=nt_cu_med;
+run;
+
+proc univariate data=turntime noprint ;
+	by fcstorig fcstdest;
+	var ld_nt;
+	output out=ld_nt_time median=transitdays;
+run;
+
+proc univariate data=turntime noprint;
+	var ld_nt;
+	output out=asdf median=transitdays;
+run;
+
+proc sql noprint;
+	select transitdays
+	into :medtransit
+	from asdf;
+	drop table asdf;
+quit;
+
+proc univariate data=turntime noprint; 
+	by fcstorig fcstdest DowNotify;
+	var nt_cu;
+	output out=nt_cu_time median=turndays;
+run;
+
+proc univariate data=turntime; 
+	by DowNotify;
+	var nt_cu;
+	output out=nt_cu_time_all median=turndays;
+run;
+
+
+
+proc sql;
+select * from nt_cu_time_all;
+select distinct DowNotify from turntime where lastdtdef;
+quit;
+
+/*proc sql noprint;*/
+/*	select turndays*/
+/*	,		 DowNotify*/
+/*	into :turndays*/
+/*	from asdf;*/
+/*	drop table asdf;*/
+/*quit;*/
+/**/
+/*%put(&turndays);*/
+
+/*transit and turn complete*/
+
+/*Containers in transit*/
+
+data transit;
+	set hublib.alldataplus;
+	lastdate = datepart(lastdt);
+	if lastdtdef = 'LD';
+	format lastdate date9.;
+	keep ordnum lastdtdef lastdate fcstorig fcstdest;
+run;
+
+proc sort data=transit;
+	by fcstorig fcstdest;
+run;
+proc sort data=ld_nt_time; 
+	by fcstorig fcstdest;
+run;
+
+data transit2;
+/*	call execute('proc sort data=transit; by fcstorig fcstdest; run;');*/
+/*	call execute('proc sort data=ld_nt_time; by fcstorig fcstdest; run;');*/
+	merge transit ld_nt_time;
+	medtrans = &medtransit;
+	format medtrans 2.0;
+	if transitdays eq . then transitdays = medtrans;
+	drop medtrans;
+run;
+
+data transit2;
+	set transit2;
+	ndate = intnx('day' ,lastdate ,transitdays);
+	format ndate date9.;
+run;
+
+proc print data=transit2;
+run;
+
+/*proc export data=transit2 dbms=csv replace outfile="c:\transit2.csv";run;*/
+
+/*Containers in transit complete*/
+
+/*Containers that have notified*/
+
+data turn;
+	set hublib.alldataplus;
+	ndate = datepart(lastdt);
+	if lastdtdef in ('ET','AR');
+	DowNotify = weekday(ndate);
+	format ndate date9.;
+	keep ordnum lastdtdef ndate fcstorig fcstdest DowNotify;
+run;
+
+data curmove;
+	set transit2 turn;
+	if DowNotify eq . then DowNotify = weekday(ndate);
+	medturn = &medturn;
+	format medturn 2.0;
+	if turndays eq . then turndays = medturn;
+	drop medturn;
+/*	call execute('proc sort data=curmove; by fcstdest DowNotify; run;');*/
+run;	
+
+proc sort data=curmove;
+	by fcstdest DowNotify;
+run;
+
+proc sort data=nt_cu_time;
+	by fcstdest DowNotify;
+run;
+
+data curmove2;
+	merge curmove nt_cu_time;
+	enddate = intnx('day' ,ndate ,turndays);
+run;
+
+proc print data=curmove2;
+	where enddate eq .;
+run;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+
+
+*proc contents data=hublib.alldataplus;run;
+
+data transit;
+	set hublib.alldataplus;
+	lastdate = datepart(lastdt);
+	if lastdtdef = 'LD';
+	format lastdate date9.;
+	keep ordnum lastdtdef lastdate fcstorig fcstdest;
+
+run;
+
+proc contents data=transit;run;
+
+data turn;
+	set hublib.alldataplus;
+	lastdate = datepart(lastdt);
+	if lastdtdef in ('ET','AR');
+	notifydow = weekday(lastdate);
+	format lastdate date9.;
+	keep ordnum lastdtdef lastdate fcstorig fcstdest notifydow;
+
+run;
+
+proc contents data=turn;run;
+
+proc sort data=transit;
+	by fcstorig fcstdest;
+proc sort data=hublib.transitmedian;
+	by fcstorig fcstdest;
+
+run;
+
+proc contents data=hublib.transitmedian;run;
+
+data transit;
+	merge transit hublib.transitmedian;
+	keep ordnum lastdtdef lastdate fcstorig fcstdest loadtonotify50;
+
+run;
+
+data transit;
+	supdat = intnx('day',lastdate,loadtonotify50);
+
+run;
+
+proc sort data=turn;
+	by fcstdest notifydow;
+proc sort data=hublib.turntimedowdist;
+	by fcstdest notifydow;
+
+run;
+
+data turn;
+	merge turn hublib.turntimedowdist;
+	keep ordnum lastdtdef lastdate fcstorig fcstdest notifydow nottounloaddays;
+data turn;
+	supdat = intnx('day',lastdate,nottounloaddays);
+	
+run;
+
+data stack;
+	set transit turn;
+	
+run;
+
+proc sql;
+
+create table stack2 as 
+select 	supdat as sdate
+,		fcstdest as destSubMkt
+,		count(ordnum) as volume
+from 	stack
+group 
+by		supdat;
+
+quit;
+
+proc export data=stack2 dbms=xlsx replace outfile='c:\stack2.xlsx';
+run;
+

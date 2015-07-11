@@ -1,0 +1,42 @@
+
+data hublib.a;
+set work.majorfcstsummary2;
+where fcstorig eq 'CHMET' and fcstdest eq 'LOSAN';
+run;
+
+data;
+set hublib.a;
+proc arima; 
+identify var= count(1);
+run;
+estimate p= (1 2 3 4 5 6 7)(14) method=ml plot;
+run;
+forecast id= fcstdt lead= 14 out= f printall;
+run;
+quit;
+
+proc autoreg;
+model mon tue wed thu jan feb mar apr may jun jul aug sep oct nov dec/ method= ml;
+output out= autoregf;
+run;
+
+data f;
+set f;
+kind ='arima';
+run;
+
+data autoregf;
+set autoregf;
+kind = 'autoreg';
+run;
+
+data testfin;
+set f autoregf;
+run;
+
+proc export 
+data= testfin
+dbms= csv
+outfile= "c:\fc.csv"
+replace;
+run;

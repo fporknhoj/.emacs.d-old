@@ -1,0 +1,49 @@
+# Data Munging 
+install.packages("data.table")
+install.packages("reshape2")
+install.packages("sqldf")
+install.packages("dplyr")
+install.packages("plyr")
+
+# Programming
+#install.packages("memisc")
+
+# Graphing / Plotting
+install.packages("Rgraphviz")
+install.packages("ggplot2")
+install.packages("ggviz")
+
+# External Data Connections
+install.packages("dataframes2xls")
+install.packages("XLConnect")
+install.packages("sas7bdat")
+install.packages("RODBC")
+
+# Statistical Modeling / Forecasting
+install.packages("tempdisagg")
+install.packages("multilevel")
+install.packages("fracdiff")
+install.packages("forecast")
+install.packages("tseries")
+install.packages("stats")
+install.packages("nlme")
+install.packages("aod")
+
+# Speed Enhancements
+install.packages("Rcpp")
+
+# Clustering
+install.packages("Rclusterpp")
+install.packages("cluster")
+install.packages("class")
+
+# Mapping
+install.packages("ggmap")
+install.packages("sp")
+
+# Webscraping
+install.packages("RSelenium")
+install.packages("rvest")
+
+# Bayesian
+install.packages("abn")
